@@ -48,7 +48,6 @@ export class VaultService {
     }
 
     this.persistSecrets(body);
-    this.logger.log(`Vault response from ${this.address}: ${JSON.stringify(body, null, 2)}`);
     return body;
   }
 

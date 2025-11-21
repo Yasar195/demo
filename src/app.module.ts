@@ -1,15 +1,25 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { CommonsModule } from './commons/commons.module';
-import { IamModule } from './iam/iam.module';
+import { ConfigModule } from './config/config.module';
+import { CommonModule } from './common/common.module';
 import { ValidatorsModule } from './validators/validators.module';
-import { VaultModule } from './vault/vault.module';
+import { VaultModule } from './integrations/vault/vault.module';
+import { HealthModule } from './health/health.module';
+import { DatabaseModule } from './database/database.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), CommonsModule, IamModule, ValidatorsModule, VaultModule],
+  imports: [
+    ConfigModule,
+    DatabaseModule,
+    CommonModule,
+    ValidatorsModule,
+    VaultModule,
+    HealthModule,
+    UsersModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
