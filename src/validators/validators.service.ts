@@ -66,5 +66,6 @@ export class ValidatorsService {
 
     const phonePattern = /^\+?[0-9\s\-()]{7,20}$/;
     return phonePattern.test(value) ? null : `${fieldName} must be a valid phone number`;
-  }
+  }  
+
 }
