@@ -30,6 +30,16 @@ export class AuthService {
         return this.createGoogleUserAndTokens(normalized);
     }
 
+    async getProfile(userId: string): Promise<Omit<User, 'password'>> {
+        const user = await this.usersService.findById(userId);
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
+
+        const { password, ...safeUser } = user;
+        return safeUser;
+    }
+
     private async generateTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {
         const payload = { sub: user.id, email: user.email, role: user.role };
 
@@ -54,7 +64,7 @@ export class AuthService {
     private async verifyGoogleIdToken(idToken: string): Promise<TokenPayload> {
         const ticket = await this.googleClient.verifyIdToken({
             idToken,
-            audience: this.configService.get<string>('GOOGLE_CLIENT_ID'),
+            audience: this.configService.get<string>('google.clientId'),
         });
 
         const payload = ticket.getPayload();
