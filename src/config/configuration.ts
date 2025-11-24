@@ -1,6 +1,6 @@
 import { AppConfig } from './interfaces/app-config.interface';
 import { DatabaseConfig } from './interfaces/database-config.interface';
-import { JwtConfig, VaultConfig } from './interfaces/config.interface';
+import { JwtConfig, VaultConfig, GoogleOAuthConfig } from './interfaces/config.interface';
 
 export default () => ({
     app: {
@@ -31,4 +31,10 @@ export default () => ({
         address: process.env.VAULT_ADDR || process.env.VAULT_URL || '',
         token: process.env.VAULT_TOKEN || '',
     } as VaultConfig,
+
+    google: {
+        clientId: process.env.GOOGLE_CLIENT_ID || '',
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+        callbackUrl: process.env.GOOGLE_CALLBACK_URL || '',
+    } as GoogleOAuthConfig,
 });

@@ -17,6 +17,13 @@ export class UsersRepository extends PrismaRepository<User> {
     }
 
     /**
+     * Find user by OAuth provider and provider id
+     */
+    async findByProvider(provider: string, providerId: string): Promise<User | null> {
+        return this.findOneByCondition({ provider, providerId } as Partial<User>);
+    }
+
+    /**
      * Find users by role
      */
     async findByRole(role: string): Promise<User[]> {

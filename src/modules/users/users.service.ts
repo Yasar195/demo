@@ -80,4 +80,60 @@ export class UsersService extends BaseService<User> {
 
         return this.usersRepository.softDelete(id);
     }
+
+    /**
+     * Upsert a user from an OAuth provider (e.g., Google)
+     */
+    async upsertOAuthUser(params: {
+        provider: string;
+        providerId: string;
+        email: string;
+        name: string;
+        avatarUrl?: string;
+        role?: string;
+    }): Promise<User> {
+        const { provider, providerId, email, name, avatarUrl, role } = params;
+        const lastLogin = new Date();
+
+        const existingByProvider = await this.usersRepository.findByProvider(provider, providerId);
+        if (existingByProvider) {
+            const updated = await this.usersRepository.update(existingByProvider.id, {
+                email,
+                name,
+                avatarUrl,
+                lastLogin,
+            } as Partial<User>);
+
+            if (updated) {
+                return updated;
+            }
+        }
+
+        const existingByEmail = await this.usersRepository.findByEmail(email);
+        if (existingByEmail) {
+            const updated = await this.usersRepository.update(existingByEmail.id, {
+                provider,
+                providerId,
+                name,
+                avatarUrl,
+                lastLogin,
+                password: null,
+            } as Partial<User>);
+
+            if (updated) {
+                return updated;
+            }
+        }
+
+        return this.usersRepository.create({
+            email,
+            name,
+            avatarUrl,
+            provider,
+            providerId,
+            role: role || 'user',
+            password: null,
+            lastLogin,
+        } as Partial<User>);
+    }
 }
