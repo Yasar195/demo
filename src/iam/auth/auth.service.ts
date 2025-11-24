@@ -5,6 +5,10 @@ import { OAuth2Client, TokenPayload } from 'google-auth-library';
 import { StringValue } from 'ms';
 import { UsersService } from '../../modules/users/users.service';
 import { User } from '../../modules/users/entities/user.entity';
+import { hashPassword } from '../../common/utils/crypto.utils';
+
+type AuthTokens = { accessToken: string; refreshToken: string };
+type AuthResult = { user: Omit<User, 'password'>; tokens: AuthTokens };
 
 @Injectable()
 export class AuthService {
@@ -18,7 +22,7 @@ export class AuthService {
         this.googleClient = new OAuth2Client(this.configService.get<string>('google.clientId'));
     }
 
-    async loginWithGoogleIdToken(idToken: string): Promise<{ user: User; tokens: { accessToken: string; refreshToken: string } }> {
+    async loginWithGoogleIdToken(idToken: string): Promise<AuthResult> {
         const payload = await this.verifyGoogleIdToken(idToken);
         const normalized = {
             providerId: payload.sub,
@@ -28,6 +32,21 @@ export class AuthService {
         };
 
         return this.createGoogleUserAndTokens(normalized);
+    }
+
+    async loginWithEmailPassword(email: string, password: string): Promise<AuthResult> {
+        const user = await this.usersService.findByEmail(email);
+        if (!user || !user.password) {
+            throw new UnauthorizedException('Invalid credentials');
+        }
+
+        const hashedInput = hashPassword(password);
+        if (hashedInput !== user.password) {
+            throw new UnauthorizedException('Invalid credentials');
+        }
+
+        const tokens = await this.generateTokens(user);
+        return { user: this.sanitizeUser(user), tokens };
     }
 
     async getProfile(userId: string): Promise<Omit<User, 'password'>> {
@@ -80,7 +99,7 @@ export class AuthService {
         email?: string;
         name?: string | null;
         avatarUrl?: string;
-    }): Promise<{ user: User; tokens: { accessToken: string; refreshToken: string } }> {
+    }): Promise<AuthResult> {
         if (!profile.email) {
             throw new UnauthorizedException('Google account does not have an email');
         }
@@ -98,6 +117,13 @@ export class AuthService {
         });
 
         const tokens = await this.generateTokens(user);
-        return { user, tokens };
+        return { user: this.sanitizeUser(user), tokens };
+    }
+
+    private sanitizeUser(user: User): Omit<User, 'password'> {
+        // Remove password before returning user
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { password, ...safeUser } = user;
+        return safeUser;
     }
 }
