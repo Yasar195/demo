@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaRepository } from '../../../database/repositories/prisma.repository';
 import { PrismaService } from '../../../database/prisma.service';
 import { User } from '../entities/user.entity';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class UsersRepository extends PrismaRepository<User> {
@@ -26,7 +27,7 @@ export class UsersRepository extends PrismaRepository<User> {
     /**
      * Find users by role
      */
-    async findByRole(role: string): Promise<User[]> {
+    async findByRole(role: UserRole): Promise<User[]> {
         return this.findByCondition({ role } as Partial<User>);
     }
 

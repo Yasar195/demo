@@ -1,10 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { ValidationPipe, LogLevel } from '@nestjs/common';
+import { ValidationPipe, LogLevel, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { VaultService } from './integrations/vault/vault.service';
 import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters';
 import { LoggingInterceptor, TransformInterceptor } from './common/interceptors';
+import { PrismaService } from './database/prisma.service';
+import { hashPassword } from './common/utils/crypto.utils';
+import { UserRole } from '@prisma/client';
 
 const allowedLogLevels: LogLevel[] = ['log', 'error', 'warn', 'debug', 'verbose'];
 
@@ -26,10 +29,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: resolveLogLevels(),
   });
+  const logger = new Logger('Bootstrap');
 
   // Get services
   const configService = app.get(ConfigService);
   const vaultService = app.get(VaultService);
+  const prismaService = app.get(PrismaService);
 
   // Global filters
   app.useGlobalFilters(new AllExceptionsFilter(), new HttpExceptionFilter());
@@ -62,6 +67,27 @@ async function bootstrap() {
     await vaultService.logVaultResponse();
   } catch (error) {
     console.error('Failed to fetch Vault data:', error);
+  }
+
+  // Seed default admin if database is empty
+  try {
+    const usersCount = await prismaService.user.count();
+    if (usersCount === 0) {
+      await prismaService.user.upsert({
+        where: { email: 'admin@sustify.com' },
+        update: {},
+        create: {
+          email: 'admin@sustify.com',
+          name: 'System Admin',
+          password: hashPassword('Admin@123'),
+          role: UserRole.ADMIN,
+          provider: 'local',
+        },
+      });
+      logger.log('Default admin user created (admin@sustify.com)');
+    }
+  } catch (error) {
+    logger.error('Failed to ensure default admin user', error as Error);
   }
 
   // Start server

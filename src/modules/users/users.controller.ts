@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, ParseEnumPipe } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
 import { BaseResponseDto } from '../../common/dto/base-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
+import { UserRole } from '@prisma/client';
 
 @Controller('users')
 export class UsersController {
@@ -42,7 +43,7 @@ export class UsersController {
     }
 
     @Get('role/:role')
-    async findByRole(@Param('role') role: string) {
+    async findByRole(@Param('role', new ParseEnumPipe(UserRole)) role: UserRole) {
         const users = await this.usersService.findByRole(role);
         return BaseResponseDto.success(users, `Users with role ${role} retrieved successfully`);
     }

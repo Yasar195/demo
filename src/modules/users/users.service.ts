@@ -5,6 +5,7 @@ import { UsersRepository } from './repositories/users.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { hashPassword } from '../../common/utils/crypto.utils';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class UsersService extends BaseService<User> {
@@ -65,7 +66,7 @@ export class UsersService extends BaseService<User> {
     /**
      * Find users by role
      */
-    async findByRole(role: string): Promise<User[]> {
+    async findByRole(role: UserRole): Promise<User[]> {
         return this.usersRepository.findByRole(role);
     }
 
@@ -90,7 +91,7 @@ export class UsersService extends BaseService<User> {
         email: string;
         name: string;
         avatarUrl?: string;
-        role?: string;
+        role?: UserRole;
     }): Promise<User> {
         const { provider, providerId, email, name, avatarUrl, role } = params;
         const lastLogin = new Date();
@@ -131,7 +132,7 @@ export class UsersService extends BaseService<User> {
             avatarUrl,
             provider,
             providerId,
-            role: role || 'user',
+            role: role || UserRole.USER,
             password: null,
             lastLogin,
         } as Partial<User>);

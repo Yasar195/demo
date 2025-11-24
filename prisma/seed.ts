@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, UserRole } from '@prisma/client';
+import { hashPassword } from '../src/common/utils/crypto.utils';
 
 const prisma = new PrismaClient();
 
@@ -11,9 +12,10 @@ async function main() {
         update: {},
         create: {
             email: 'admin@sustify.com',
-            name: 'Admin User',
-            password: 'hashed_password_here', // In production, use proper hashing
-            role: 'admin',
+            name: 'System Admin',
+            password: hashPassword('Admin@123'),
+            role: UserRole.ADMIN,
+            provider: 'local',
         },
     });
 
