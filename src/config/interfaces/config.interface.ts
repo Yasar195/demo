@@ -15,3 +15,9 @@ export interface GoogleOAuthConfig {
     clientSecret: string;
     callbackUrl: string;
 }
+
+export interface StripeConfig {
+    secretKey: string;
+    apiVersion?: string;
+    webhookSecret?: string;
+}

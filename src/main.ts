@@ -1,7 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { ValidationPipe, LogLevel, Logger } from '@nestjs/common';
+import { ValidationPipe, LogLevel, Logger, INestApplicationContext, Module } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { ConfigModule } from './config/config.module';
+import { VaultModule } from './integrations/vault/vault.module';
 import { VaultService } from './integrations/vault/vault.service';
 import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters';
 import { LoggingInterceptor, TransformInterceptor } from './common/interceptors';
@@ -14,7 +16,7 @@ const allowedLogLevels: LogLevel[] = ['log', 'error', 'warn', 'debug', 'verbose'
 function resolveLogLevels(): LogLevel[] {
   const raw = process.env.APP_LOG_LEVELS;
   if (!raw) {
-    return ['error', 'warn'];
+    return ['error', 'warn', 'log', 'debug', 'verbose'];
   }
 
   const levels = raw
@@ -22,26 +24,47 @@ function resolveLogLevels(): LogLevel[] {
     .map((level) => level.trim() as LogLevel)
     .filter((level): level is LogLevel => allowedLogLevels.includes(level));
 
-  return levels.length > 0 ? levels : ['error', 'warn'];
+  return levels.length > 0 ? levels : ['error', 'warn', 'log'];
+}
+
+@Module({
+  imports: [ConfigModule, VaultModule],
+})
+class VaultInitModule {}
+
+async function initializeVault(logger: Logger): Promise<void> {
+  const context = await NestFactory.createApplicationContext(VaultInitModule, { logger: false });
+  // const context = await NestFactory.createApplicationContext(VaultInitModule, );
+  const vaultService = context.get(VaultService);
+
+  if (!vaultService.isConfigured()) {
+    logger.warn('Vault not configured; skipping secret sync');
+    await context.close();
+    return;
+  }
+
+  try {
+    await vaultService.logVaultResponse();
+    logger.log('Vault secrets loaded');
+  } catch (error) {
+    logger.error(
+      'Failed to fetch Vault data; continuing with existing environment variables',
+      error as Error,
+    );
+  } finally {
+    await context.close();
+  }
 }
 
 async function bootstrap() {
-
-  const tmpApp = await NestFactory.createApplicationContext(AppModule, { logger: false });
-  const vault = tmpApp.get(VaultService);
-
-  await vault.logVaultResponse(); 
-  await tmpApp.close();
+  const logger = new Logger('Bootstrap');
+  await initializeVault(logger);
 
   const app = await NestFactory.create(AppModule, {
     logger: resolveLogLevels(),
   });
-  const logger = new Logger('Bootstrap');
-
+  // const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
-  const vaultService = app.get(VaultService);
-
-  await vaultService.logVaultResponse()
 
   const prismaService = app.get(PrismaService);
   await prismaService.$connect();
@@ -72,13 +95,6 @@ async function bootstrap() {
   // CORS
   app.enableCors();
 
-  // Vault initialization
-  try {
-    await vaultService.logVaultResponse();
-  } catch (error) {
-    console.error('Failed to fetch Vault data:', error);
-  }
-
   // Seed default admin if database is empty
   try {
     const usersCount = await prismaService.user.count();
@@ -103,5 +119,6 @@ async function bootstrap() {
   // Start server
   const port = configService.get('APP_PORT') || 3000;
   await app.listen(port);
+  logger.log(`Application is running on port ${port}`);
 }
 bootstrap();

@@ -1,6 +1,6 @@
 import { AppConfig } from './interfaces/app-config.interface';
 import { DatabaseConfig } from './interfaces/database-config.interface';
-import { JwtConfig, VaultConfig, GoogleOAuthConfig } from './interfaces/config.interface';
+import { JwtConfig, VaultConfig, GoogleOAuthConfig, StripeConfig } from './interfaces/config.interface';
 
 export default () => ({
     app: {
@@ -37,4 +37,10 @@ export default () => ({
         clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
         callbackUrl: process.env.GOOGLE_CALLBACK_URL || '',
     } as GoogleOAuthConfig,
+
+    stripe: {
+        secretKey: process.env.STRIPE_SECRET_KEY || '',
+        apiVersion: process.env.STRIPE_API_VERSION || '2024-06-20',
+        webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+    } as StripeConfig,
 });

@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, HttpException, InternalServerErrorException, BadRequestException, Logger } from '@nestjs/common';
 import { BaseService } from '../../core/abstracts/base.service';
 import { User } from './entities/user.entity';
 import { UsersRepository } from './repositories/users.repository';
@@ -10,6 +10,8 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class UsersService extends BaseService<User> {
+    private readonly logger = new Logger(UsersService.name);
+
     constructor(private readonly usersRepository: UsersRepository) {
         super(usersRepository);
     }
@@ -18,92 +20,112 @@ export class UsersService extends BaseService<User> {
      * Find all users with pagination and sorting
      */
     async findAllPaginated(pagination?: PaginationDto): Promise<{ data: User[]; total: number; page: number; totalPages: number }> {
-        const page = pagination?.page ?? 1;
-        const limit = pagination?.limit ?? 10;
-        const sortBy = pagination?.sortBy;
-        const sortOrder: 'asc' | 'desc' = pagination?.sortOrder?.toLowerCase() === 'desc' ? 'desc' : 'asc';
+        try {
+            const page = pagination?.page ?? 1;
+            const limit = pagination?.limit ?? 10;
+            const sortBy = pagination?.sortBy;
+            const sortOrder: 'asc' | 'desc' = pagination?.sortOrder?.toLowerCase() === 'desc' ? 'desc' : 'asc';
 
-        const allowedSortFields = ['createdAt', 'updatedAt', 'name', 'email', 'role', 'lastLogin'] as const;
-        type SortField = typeof allowedSortFields[number];
+            const allowedSortFields = ['createdAt', 'updatedAt', 'name', 'email', 'role', 'lastLogin'] as const;
+            type SortField = typeof allowedSortFields[number];
 
-        const resolvedSortBy: SortField = allowedSortFields.includes(sortBy as SortField)
-            ? sortBy as SortField
-            : 'createdAt';
+            const resolvedSortBy: SortField = allowedSortFields.includes(sortBy as SortField)
+                ? sortBy as SortField
+                : 'createdAt';
 
-        const orderBy: Record<string, 'asc' | 'desc'> = {
-            [resolvedSortBy]: sortBy ? sortOrder : 'desc',
-        };
+            const orderBy: Record<string, 'asc' | 'desc'> = {
+                [resolvedSortBy]: sortBy ? sortOrder : 'desc',
+            };
 
-        return this.usersRepository.findWithPagination(page, limit, {}, orderBy);
+            return await this.usersRepository.findWithPagination(page, limit, {}, orderBy);
+        } catch (error) {
+            this.handleError('findAllPaginated', error);
+        }
     }
 
     /**
      * Create a new user
      */
     async createUser(dto: CreateUserDto): Promise<User> {
-        // Check if email already exists
-        const exists = await this.usersRepository.emailExists(dto.email);
-        if (exists) {
-            throw new ConflictException('Email already exists');
+        try {
+            const exists = await this.usersRepository.emailExists(dto.email);
+            if (exists) {
+                throw new BadRequestException('Email already exists');
+            }
+
+            const hashedPassword = hashPassword(dto.password);
+
+            return await this.usersRepository.create({
+                ...dto,
+                password: hashedPassword,
+            } as Partial<User>);
+        } catch (error) {
+            this.handleError('createUser', error);
         }
-
-        // Hash password
-        const hashedPassword = hashPassword(dto.password);
-
-        // Create user
-        return this.usersRepository.create({
-            ...dto,
-            password: hashedPassword,
-        } as Partial<User>);
     }
 
     /**
      * Update user
      */
     async updateUser(id: string, dto: UpdateUserDto): Promise<User> {
-        const user = await this.usersRepository.findById(id);
-        if (!user) {
-            throw new NotFoundException('User not found');
-        }
+        try {
+            const user = await this.usersRepository.findById(id);
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
 
-        // Hash password if provided
-        const updateData: Partial<User> = { ...dto } as Partial<User>;
-        if (dto.password) {
-            updateData.password = hashPassword(dto.password);
-        }
+            const updateData: Partial<User> = { ...dto } as Partial<User>;
+            if (dto.password) {
+                updateData.password = hashPassword(dto.password);
+            }
 
-        const updated = await this.usersRepository.update(id, updateData);
-        if (!updated) {
-            throw new NotFoundException('User not found');
-        }
+            const updated = await this.usersRepository.update(id, updateData);
+            if (!updated) {
+                throw new NotFoundException('User not found');
+            }
 
-        return updated;
+            return updated;
+        } catch (error) {
+            this.handleError('updateUser', error);
+        }
     }
 
     /**
      * Find user by email
      */
     async findByEmail(email: string): Promise<User | null> {
-        return this.usersRepository.findByEmail(email);
+        try {
+            return await this.usersRepository.findByEmail(email);
+        } catch (error) {
+            this.handleError('findByEmail', error);
+        }
     }
 
     /**
      * Find users by role
      */
     async findByRole(role: UserRole): Promise<User[]> {
-        return this.usersRepository.findByRole(role);
+        try {
+            return await this.usersRepository.findByRole(role);
+        } catch (error) {
+            this.handleError('findByRole', error);
+        }
     }
 
     /**
      * Delete user (soft delete)
      */
     async deleteUser(id: string): Promise<boolean> {
-        const user = await this.usersRepository.findById(id);
-        if (!user) {
-            throw new NotFoundException('User not found');
-        }
+        try {
+            const user = await this.usersRepository.findById(id);
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
 
-        return this.usersRepository.softDelete(id);
+            return await this.usersRepository.softDelete(id);
+        } catch (error) {
+            this.handleError('deleteUser', error);
+        }
     }
 
     /**
@@ -117,48 +139,60 @@ export class UsersService extends BaseService<User> {
         avatarUrl?: string;
         role?: UserRole;
     }): Promise<User> {
-        const { provider, providerId, email, name, avatarUrl, role } = params;
-        const lastLogin = new Date();
+        try {
+            const { provider, providerId, email, name, avatarUrl, role } = params;
+            const lastLogin = new Date();
 
-        const existingByProvider = await this.usersRepository.findByProvider(provider, providerId);
-        if (existingByProvider) {
-            const updated = await this.usersRepository.update(existingByProvider.id, {
+            const existingByProvider = await this.usersRepository.findByProvider(provider, providerId);
+            if (existingByProvider) {
+                const updated = await this.usersRepository.update(existingByProvider.id, {
+                    email,
+                    name,
+                    avatarUrl,
+                    lastLogin,
+                } as Partial<User>);
+
+                if (updated) {
+                    return updated;
+                }
+            }
+
+            const existingByEmail = await this.usersRepository.findByEmail(email);
+            if (existingByEmail) {
+                const updated = await this.usersRepository.update(existingByEmail.id, {
+                    provider,
+                    providerId,
+                    name,
+                    avatarUrl,
+                    lastLogin,
+                    password: null,
+                } as Partial<User>);
+
+                if (updated) {
+                    return updated;
+                }
+            }
+
+            return await this.usersRepository.create({
                 email,
                 name,
                 avatarUrl,
-                lastLogin,
-            } as Partial<User>);
-
-            if (updated) {
-                return updated;
-            }
-        }
-
-        const existingByEmail = await this.usersRepository.findByEmail(email);
-        if (existingByEmail) {
-            const updated = await this.usersRepository.update(existingByEmail.id, {
                 provider,
                 providerId,
-                name,
-                avatarUrl,
-                lastLogin,
+                role: role || UserRole.USER,
                 password: null,
+                lastLogin,
             } as Partial<User>);
-
-            if (updated) {
-                return updated;
-            }
+        } catch (error) {
+            this.handleError('upsertOAuthUser', error);
         }
+    }
 
-        return this.usersRepository.create({
-            email,
-            name,
-            avatarUrl,
-            provider,
-            providerId,
-            role: role || UserRole.USER,
-            password: null,
-            lastLogin,
-        } as Partial<User>);
+    private handleError(context: string, error: unknown): never {
+        this.logger.error(`UsersService.${context} failed`, error as Error);
+        if (error instanceof HttpException) {
+            throw error;
+        }
+        throw new InternalServerErrorException('Internal server error');
     }
 }

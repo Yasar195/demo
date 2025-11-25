@@ -9,6 +9,7 @@ import { HealthModule } from './health/health.module';
 import { DatabaseModule } from './database/database.module';
 import { UsersModule } from './modules/users/users.module';
 import { VouchersModule } from './modules/vouchers/vouchers.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { IamModule } from './iam/iam.module';
 
 @Module({
@@ -21,6 +22,7 @@ import { IamModule } from './iam/iam.module';
     HealthModule,
     UsersModule,
     VouchersModule,
+    PaymentsModule,
     IamModule,
   ],
   controllers: [AppController],

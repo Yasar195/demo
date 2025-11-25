@@ -20,14 +20,35 @@ export class HttpExceptionFilter implements ExceptionFilter {
         const status = exception.getStatus();
         const exceptionResponse = exception.getResponse();
 
-        const errorMessage =
+        const responseMessage =
             typeof exceptionResponse === 'string'
                 ? exceptionResponse
-                : (exceptionResponse as any).message || 'An error occurred';
+                : (exceptionResponse as any).message;
+
+        const responseError =
+            typeof exceptionResponse === 'string'
+                ? undefined
+                : (exceptionResponse as any).error;
+
+        const errorMessage =
+            (Array.isArray(responseMessage) && responseMessage.join(', ')) ||
+            (Array.isArray(responseError) && responseError.join(', ')) ||
+            (responseError as string) ||
+            (responseMessage as string) ||
+            'An error occurred';
+
+        const messageText =
+            typeof responseMessage === 'string'
+                ? responseMessage
+                : typeof responseError === 'string'
+                    ? responseError
+                    : Array.isArray(responseMessage)
+                        ? 'Validation failed'
+                        : exception.message;
 
         const errorResponse = BaseResponseDto.error(
-            Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage,
-            exception.message,
+            errorMessage,
+            messageText,
         );
         errorResponse.path = request.url;
 
