@@ -8,6 +8,7 @@ import { VaultModule } from './integrations/vault/vault.module';
 import { HealthModule } from './health/health.module';
 import { DatabaseModule } from './database/database.module';
 import { UsersModule } from './modules/users/users.module';
+import { VouchersModule } from './modules/vouchers/vouchers.module';
 import { IamModule } from './iam/iam.module';
 
 @Module({
@@ -19,6 +20,7 @@ import { IamModule } from './iam/iam.module';
     VaultModule,
     HealthModule,
     UsersModule,
+    VouchersModule,
     IamModule,
   ],
   controllers: [AppController],

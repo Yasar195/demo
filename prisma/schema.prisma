@@ -16,18 +16,84 @@ enum UserRole {
 
 // Example User model
 model User {
+  id         String    @id @default(uuid())
+  email      String    @unique
+  name       String
+  password   String?
+  provider   String    @default("local")
+  providerId String?   @unique
+  avatarUrl  String?
+  lastLogin  DateTime?
+  role       UserRole  @default(USER)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  notification NotificationRecipient[]
+
+  @@map("users")
+}
+
+model Voucher {
+  id         String    @id @default(uuid())
+  code       String    @unique
+  discount   Float
+  expiresAt  DateTime
+  giftCardId String?
+  isVerified Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  @@map("vouchers")
+}
+
+model Cart {
   id        String    @id @default(uuid())
-  email     String    @unique
-  name      String
-  password  String?
-  provider  String    @default("local")
-  providerId String?  @unique
-  avatarUrl String?
-  lastLogin DateTime?
-  role      UserRole  @default(USER)
+  userId    String
+  voucherId String
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@map("users")
+  @@map("carts")
+}
+
+model GiftCard {
+  id        String    @id @default(uuid())
+  code      String    @unique
+  balance   Float
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("gift_cards")
+}
+
+model NotificationRecipient {
+  id             String    @id @default(uuid(7))
+  notificationId String    @map("notification_id")
+  userId         String    @map("user_id")
+  isRead         Boolean   @default(false) @map("is_read")
+  readAt         DateTime? @map("read_at")
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([notificationId, userId])
+  @@map("notification_recipients")
+}
+
+model Notification {
+  id          String   @id @default(uuid(7))
+  title       String
+  message     String
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  createdById String   @map("created_by_id")
+
+  recipients NotificationRecipient[]
+
+  @@map("notifications")
 }
