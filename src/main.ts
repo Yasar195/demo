@@ -26,15 +26,25 @@ function resolveLogLevels(): LogLevel[] {
 }
 
 async function bootstrap() {
+
+  const tmpApp = await NestFactory.createApplicationContext(AppModule, { logger: false });
+  const vault = tmpApp.get(VaultService);
+
+  await vault.logVaultResponse(); 
+  await tmpApp.close();
+
   const app = await NestFactory.create(AppModule, {
     logger: resolveLogLevels(),
   });
   const logger = new Logger('Bootstrap');
 
-  // Get services
   const configService = app.get(ConfigService);
   const vaultService = app.get(VaultService);
+
+  await vaultService.logVaultResponse()
+
   const prismaService = app.get(PrismaService);
+  await prismaService.$connect();
 
   // Global filters
   app.useGlobalFilters(new AllExceptionsFilter(), new HttpExceptionFilter());
