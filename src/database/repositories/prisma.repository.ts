@@ -98,6 +98,7 @@ export abstract class PrismaRepository<T> extends BaseRepository<T> {
         page: number = 1,
         limit: number = 10,
         where: any = {},
+        orderBy?: Record<string, 'asc' | 'desc'>,
     ): Promise<{ data: T[]; total: number; page: number; totalPages: number }> {
         const skip = (page - 1) * limit;
 
@@ -106,6 +107,7 @@ export abstract class PrismaRepository<T> extends BaseRepository<T> {
                 where: { ...where, deletedAt: null },
                 skip,
                 take: limit,
+                orderBy,
             }),
             this.model.count({
                 where: { ...where, deletedAt: null },

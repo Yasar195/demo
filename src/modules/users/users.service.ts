@@ -6,11 +6,35 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { hashPassword } from '../../common/utils/crypto.utils';
 import { UserRole } from '@prisma/client';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class UsersService extends BaseService<User> {
     constructor(private readonly usersRepository: UsersRepository) {
         super(usersRepository);
+    }
+
+    /**
+     * Find all users with pagination and sorting
+     */
+    async findAllPaginated(pagination?: PaginationDto): Promise<{ data: User[]; total: number; page: number; totalPages: number }> {
+        const page = pagination?.page ?? 1;
+        const limit = pagination?.limit ?? 10;
+        const sortBy = pagination?.sortBy;
+        const sortOrder: 'asc' | 'desc' = pagination?.sortOrder?.toLowerCase() === 'desc' ? 'desc' : 'asc';
+
+        const allowedSortFields = ['createdAt', 'updatedAt', 'name', 'email', 'role', 'lastLogin'] as const;
+        type SortField = typeof allowedSortFields[number];
+
+        const resolvedSortBy: SortField = allowedSortFields.includes(sortBy as SortField)
+            ? sortBy as SortField
+            : 'createdAt';
+
+        const orderBy: Record<string, 'asc' | 'desc'> = {
+            [resolvedSortBy]: sortBy ? sortOrder : 'desc',
+        };
+
+        return this.usersRepository.findWithPagination(page, limit, {}, orderBy);
     }
 
     /**

@@ -14,8 +14,11 @@ export class UsersController {
     @Get()
     @UseGuards(JwtAuthGuard)
     async findAll(@Query() pagination: PaginationDto) {
-        const users = await this.usersService.findAll();
-        return BaseResponseDto.success(users.map(this.sanitizeUser), 'Users retrieved successfully');
+        const result = await this.usersService.findAllPaginated(pagination);
+        return BaseResponseDto.success({
+            ...result,
+            data: result.data.map(this.sanitizeUser),
+        }, 'Users retrieved successfully');
     }
 
     @Get(':id')

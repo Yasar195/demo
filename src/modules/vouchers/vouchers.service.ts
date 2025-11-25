@@ -3,11 +3,35 @@ import { BaseService } from '../../core/abstracts/base.service';
 import { VouchersRepository } from './repositories/vouchers.repository';
 import { Voucher } from './entities/voucher.entity';
 import { CreateVoucherDto, UpdateVoucherDto } from './dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class VouchersService extends BaseService<Voucher> {
     constructor(private readonly vouchersRepository: VouchersRepository) {
         super(vouchersRepository);
+    }
+
+    /**
+     * Find all vouchers with pagination and sorting
+     */
+    async findAllPaginated(pagination?: PaginationDto): Promise<{ data: Voucher[]; total: number; page: number; totalPages: number }> {
+        const page = pagination?.page ?? 1;
+        const limit = pagination?.limit ?? 10;
+        const sortBy = pagination?.sortBy;
+        const sortOrder: 'asc' | 'desc' = pagination?.sortOrder?.toLowerCase() === 'desc' ? 'desc' : 'asc';
+
+        const allowedSortFields = ['createdAt', 'updatedAt', 'code', 'discount', 'expiresAt', 'isVerified'] as const;
+        type SortField = typeof allowedSortFields[number];
+
+        const resolvedSortBy: SortField = allowedSortFields.includes(sortBy as SortField)
+            ? sortBy as SortField
+            : 'createdAt';
+
+        const orderBy: Record<string, 'asc' | 'desc'> = {
+            [resolvedSortBy]: sortBy ? sortOrder : 'desc',
+        };
+
+        return this.vouchersRepository.findWithPagination(page, limit, {}, orderBy);
     }
 
     /**

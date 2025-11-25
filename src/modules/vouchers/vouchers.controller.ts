@@ -12,8 +12,8 @@ export class VouchersController {
     @Get()
     @UseGuards(JwtAuthGuard)
     async findAll(@Query() pagination: PaginationDto) {
-        const vouchers = await this.vouchersService.findAll();
-        return BaseResponseDto.success(vouchers, 'Vouchers retrieved successfully');
+        const result = await this.vouchersService.findAllPaginated(pagination);
+        return BaseResponseDto.success(result, 'Vouchers retrieved successfully');
     }
 
     @Get(':id')
