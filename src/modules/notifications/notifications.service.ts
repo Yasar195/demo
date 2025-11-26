@@ -60,6 +60,14 @@ export class NotificationsService extends BaseService<NotificationRecipient> {
         }
     }
 
+    async getUnreadCount(userId: string): Promise<number> {
+        try {
+            return await this.notificationsRepository.getNotificationCount(userId);
+        } catch (error) {
+            this.handleError('createNotification', error);
+        }
+    }
+
     private handleError(context: string, error: unknown): never {
         this.logger.error(`NotificaitonService.${context} failed`, error as Error);
         if (error instanceof HttpException) {

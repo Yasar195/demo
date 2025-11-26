@@ -46,6 +46,15 @@ export abstract class PrismaRepository<T> extends BaseRepository<T> {
         }
     }
 
+    async count(where: any): Promise<number> {
+        return this.model.count({
+            where: {
+                ...where,
+                deletedAt: null,
+            },
+        });
+    }
+
 
     async updateMany(where: any, data: Partial<T>): Promise<T[] | null> {
         try {
@@ -54,7 +63,6 @@ export abstract class PrismaRepository<T> extends BaseRepository<T> {
                 data,
             });
         } catch (error) {
-            // Record not found
             return null;
         }
     }

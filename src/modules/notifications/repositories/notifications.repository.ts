@@ -35,6 +35,10 @@ export class RecipientRepository extends PrismaRepository<NotificationRecipient>
     }
 
     async readNotifications(userId: string, id?: string): Promise<NotificationRecipient[] | null> {
-        return this.updateMany({ userId, id }, { readAt: new Date(), isRead: true });
+        return this.updateMany({ userId, id, isRead: false }, { readAt: new Date(), isRead: true });
+    }
+
+    async getNotificationCount(userId: string): Promise<number> {
+        return this.count({ userId, isRead: false });
     }
 }
