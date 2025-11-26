@@ -11,6 +11,7 @@ import { UsersModule } from './modules/users/users.module';
 import { VouchersModule } from './modules/vouchers/vouchers.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { IamModule } from './iam/iam.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { IamModule } from './iam/iam.module';
     UsersModule,
     VouchersModule,
     PaymentsModule,
+    NotificationsModule,
     IamModule,
   ],
   controllers: [AppController],
