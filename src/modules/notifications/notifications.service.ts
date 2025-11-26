@@ -1,7 +1,7 @@
 import { HttpException, Injectable, InternalServerErrorException, Logger } from "@nestjs/common";
-import { Notification, NotificationRecipient } from "@prisma/client";
+import { NotificationRecipient } from "@prisma/client";
 import { BaseService } from "src/core/abstracts";
-import { RecipientRepository } from "./repositories/notifications.repository";
+import { NotificationsRepository } from "./repositories/notifications.repository";
 import { PaginationDto } from "src/common/dto";
 
 @Injectable()
@@ -9,7 +9,7 @@ export class NotificationsService extends BaseService<NotificationRecipient> {
 
     private readonly logger = new Logger(NotificationsService.name);
 
-    constructor(private readonly notificationsRepository: RecipientRepository) {
+    constructor(private readonly notificationsRepository: NotificationsRepository) {
         super(notificationsRepository);
     }
 

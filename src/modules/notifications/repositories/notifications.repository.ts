@@ -1,11 +1,11 @@
 import { Injectable } from "@nestjs/common";
-import { Notification, NotificationRecipient } from "@prisma/client";
+import { NotificationRecipient } from "@prisma/client";
 import { PrismaService } from "src/database/prisma.service";
 import { PrismaRepository } from "src/database/repositories";
 import { NotificationDto } from "../dto/notifications.dto";
 
 @Injectable()
-export class RecipientRepository extends PrismaRepository<NotificationRecipient> {
+export class NotificationsRepository extends PrismaRepository<NotificationRecipient> {
     constructor(prisma: PrismaService) {
         super(prisma, 'notificationRecipient');
     }

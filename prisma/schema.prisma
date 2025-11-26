@@ -14,6 +14,13 @@ enum UserRole {
   USER
 }
 
+enum StoreRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 // Example User model
 model User {
   id         String    @id @default(uuid())
@@ -29,7 +36,10 @@ model User {
   updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
 
-  notification NotificationRecipient[]
+  notification     NotificationRecipient[]
+  storeRequests    StoreRequest[]          @relation("UserStoreRequests")
+  reviewedRequests StoreRequest[]          @relation("AdminReviews")
+  ownedStore       Store?                  @relation("StoreOwner")
 
   @@map("users")
 }
@@ -57,6 +67,118 @@ model Cart {
   deletedAt DateTime?
 
   @@map("carts")
+}
+
+
+model Store {
+  id          String    @id @default(uuid())
+  ownerId     String    @unique @map("owner_id")
+  requestId   String?   @unique @map("request_id")
+
+  name        String
+  description String?
+  logo        String?
+  website     String?
+
+  // Contact info at corporate level
+  email       String?
+  phone       String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  owner       User            @relation("StoreOwner", fields: [ownerId], references: [id])
+  request     StoreRequest?   @relation("ApprovedStore", fields: [requestId], references: [id])
+  locations   StoreLocation[]
+
+  @@map("stores")
+}
+
+model StoreRequest {
+  id          String              @id @default(uuid())
+  userId      String              @map("user_id")
+
+  // Store information requested by user
+  storeName        String         @map("store_name")
+  storeDescription String?        @map("store_description")
+  storeLogo        String?        @map("store_logo")
+  storeWebsite     String?        @map("store_website")
+  storeEmail       String?        @map("store_email")
+  storePhone       String?        @map("store_phone")
+
+  // First location details (required for store creation)
+  initialLocationData Json?       @map("initial_location_data")
+
+  // Additional information from user
+  businessDocuments Json?         @map("business_documents") // URLs to uploaded documents
+  additionalNotes   String?       @map("additional_notes")
+
+  // Request status
+  status          StoreRequestStatus @default(PENDING)
+
+  // Admin review
+  reviewedById    String?         @map("reviewed_by_id")
+  reviewedAt      DateTime?       @map("reviewed_at")
+  adminComments   String?         @map("admin_comments")
+
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  deletedAt       DateTime?
+
+  // Relations
+  user            User            @relation("UserStoreRequests", fields: [userId], references: [id])
+  reviewedBy      User?           @relation("AdminReviews", fields: [reviewedById], references: [id])
+  approvedStore   Store?          @relation("ApprovedStore")
+
+  @@index([userId], name: "user_id_idx")
+  @@index([status], name: "status_idx")
+  @@index([reviewedById], name: "reviewed_by_id_idx")
+  @@index([userId, status], name: "user_status_idx")
+  @@map("store_requests")
+}
+
+model StoreLocation {
+  id          String    @id @default(uuid())
+  storeId     String    @map("store_id")
+
+  // Location/Outlet details
+  branchName  String?   // e.g., "Downtown Branch", "Mall Outlet"
+  isMainBranch Boolean  @default(false) @map("is_main_branch")
+
+  // Geolocation fields
+  latitude    Float
+  longitude   Float
+
+  // Address components
+  address     String
+  city        String
+  state       String?
+  country     String
+  postalCode  String?   @map("postal_code")
+
+  // Contact info for this location
+  phone       String?
+  email       String?
+
+  // Operating hours (can be stored as JSON)
+  operatingHours Json?  @map("operating_hours")
+
+  // Status
+  isActive    Boolean   @default(true) @map("is_active")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime?
+
+  // Relations
+  store       Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([latitude, longitude], name: "geo_location_idx")
+  @@index([storeId], name: "store_id_idx")
+  @@index([city], name: "city_idx")
+  @@map("store_locations")
 }
 
 model GiftCard {
