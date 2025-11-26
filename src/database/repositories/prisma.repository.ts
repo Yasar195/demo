@@ -46,6 +46,19 @@ export abstract class PrismaRepository<T> extends BaseRepository<T> {
         }
     }
 
+
+    async updateMany(where: any, data: Partial<T>): Promise<T[] | null> {
+        try {
+            return await this.model.updateMany({
+                where,
+                data,
+            });
+        } catch (error) {
+            // Record not found
+            return null;
+        }
+    }
+
     async delete(id: string): Promise<boolean> {
         try {
             await this.model.delete({

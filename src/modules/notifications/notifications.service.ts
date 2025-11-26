@@ -52,7 +52,13 @@ export class NotificationsService extends BaseService<NotificationRecipient> {
         }
     }
 
-
+    async readNotifications(userId: string, id?: string): Promise<NotificationRecipient[] | null> {
+        try {
+            return await this.notificationsRepository.readNotifications(userId, id);
+        } catch (error) {
+            this.handleError('createNotification', error);
+        }
+    }
 
     private handleError(context: string, error: unknown): never {
         this.logger.error(`NotificaitonService.${context} failed`, error as Error);
