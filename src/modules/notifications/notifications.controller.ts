@@ -19,8 +19,7 @@ export class NotificationsController {
     @Patch()
     async readNotifications(@CurrentUser() user: User, @Body("id") id: string) {
         const notifications = await this.notificationsService.readNotifications(user.id,id);
-        console.log(notifications)
-        return BaseResponseDto.success('Notifications read successfully')
+        return BaseResponseDto.success(notifications, 'Notifications read successfully')
     }
 
     @Get('/unread')
