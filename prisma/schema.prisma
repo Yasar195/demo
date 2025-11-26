@@ -94,7 +94,6 @@ model Notification {
   metadata    Json?
   createdAt   DateTime  @default(now()) @map("created_at")
   deletedAt   DateTime?
-  createdById String    @map("created_by_id")
 
   recipients NotificationRecipient[]
 

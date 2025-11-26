@@ -1,7 +1,7 @@
 import { HttpException, Injectable, InternalServerErrorException, Logger } from "@nestjs/common";
 import { Notification, NotificationRecipient } from "@prisma/client";
 import { BaseService } from "src/core/abstracts";
-import { NotificationsRepository } from "./repositories/notifications.repository";
+import { RecipientRepository } from "./repositories/notifications.repository";
 import { PaginationDto } from "src/common/dto";
 
 @Injectable()
@@ -9,7 +9,7 @@ export class NotificationsService extends BaseService<NotificationRecipient> {
 
     private readonly logger = new Logger(NotificationsService.name);
 
-    constructor(private readonly notificationsRepository: NotificationsRepository) {
+    constructor(private readonly notificationsRepository: RecipientRepository) {
         super(notificationsRepository);
     }
 
@@ -30,15 +30,32 @@ export class NotificationsService extends BaseService<NotificationRecipient> {
             const orderBy: Record<string, 'asc' | 'desc'> = {
                 [resolvedSortBy]: sortBy ? sortOrder : 'desc',
             };
-            return this.notificationsRepository.findWithPagination(page, limit, { userId }, orderBy);
+            return this.notificationsRepository.findWithPagination(page, limit, { userId }, orderBy, { notification: true });
         } catch (error) {
             this.handleError('findAllPaginated', error);
         }
     }
 
+    async createNotification(data: { title: string; message: string; userIds: string[] }): Promise<void> {
+        try {
+            await this.notificationsRepository.createNotification(data);
+        } catch (error) {
+            this.handleError('createNotification', error);
+        }
+    }
+
+    async findById(id: string): Promise<NotificationRecipient | null> {
+        try {
+            return await this.notificationsRepository.findById(id);
+        } catch (error) {
+            this.handleError('createNotification', error);
+        }
+    }
+
+
 
     private handleError(context: string, error: unknown): never {
-        this.logger.error(`UsersService.${context} failed`, error as Error);
+        this.logger.error(`NotificaitonService.${context} failed`, error as Error);
         if (error instanceof HttpException) {
             throw error;
         }

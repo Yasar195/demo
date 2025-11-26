@@ -57,21 +57,23 @@ export abstract class PrismaRepository<T> extends BaseRepository<T> {
         }
     }
 
-    async findByCondition(condition: Partial<T>): Promise<T[]> {
+    async findByCondition(condition: Partial<T>, include?: Record<string, boolean | { select?: any; where?: any; include?: any }>): Promise<T[]> {
         return this.model.findMany({
             where: {
                 ...condition,
                 deletedAt: null,
             },
+            include
         });
     }
 
-    async findOneByCondition(condition: Partial<T>): Promise<T | null> {
+    async findOneByCondition(condition: Partial<T>, include?: Record<string, boolean | { select?: any; where?: any; include?: any }>): Promise<T | null> {
         return this.model.findFirst({
             where: {
                 ...condition,
                 deletedAt: null,
             },
+            include
         });
     }
 
@@ -99,16 +101,24 @@ export abstract class PrismaRepository<T> extends BaseRepository<T> {
         limit: number = 10,
         where: any = {},
         orderBy?: Record<string, 'asc' | 'desc'>,
+        include?: Record<string, boolean | { select?: any; where?: any; include?: any }>,
     ): Promise<{ data: T[]; total: number; page: number; totalPages: number }> {
         const skip = (page - 1) * limit;
+        
+        const queryOptions: any = {
+            where: { ...where, deletedAt: null },
+            skip,
+            take: limit,
+            orderBy,
+        };
+
+        // Add include if provided
+        if (include) {
+            queryOptions.include = include;
+        }
 
         const [data, total] = await Promise.all([
-            this.model.findMany({
-                where: { ...where, deletedAt: null },
-                skip,
-                take: limit,
-                orderBy,
-            }),
+            this.model.findMany(queryOptions),
             this.model.count({
                 where: { ...where, deletedAt: null },
             }),

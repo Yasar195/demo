@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from "@nestjs/common";
+import { Controller, Get, Query, UseGuards, Param } from "@nestjs/common";
 import { NotificationsService } from "./notifications.service";
 import { JwtAuthGuard } from "src/iam/auth/guards/jwt-auth.guard";
 import { CurrentUser } from "src/common/decorators";
@@ -13,6 +13,12 @@ export class NotificationsController {
     @Get()
     async findAllNotifications(@CurrentUser() user: User, @Query() pagination: PaginationDto) {
         const notifications = await this.notificationsService.findByUserId(user.id, pagination);
+        return BaseResponseDto.success(notifications, 'Notifications retrieved successfully')
+    }
+
+    @Get(':id')
+    async findNotificationById(@Param('id') id: string) {
+        const notifications = await this.notificationsService.findById(id);
         return BaseResponseDto.success(notifications, 'Notifications retrieved successfully')
     }
 }
