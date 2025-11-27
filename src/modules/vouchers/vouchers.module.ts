@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { VouchersController, VoucherRequestController } from './vouchers.controller';
+import { VoucherRequestController } from './vouchers.controller';
 import { VouchersService } from './vouchers.service';
 import { VouchersRepository } from './repositories/vouchers.repository';
 import { VoucherRequestRepository } from './repositories/voucher-request.repository';
@@ -9,7 +9,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsRepository, DeviceTokenRepository } from '../notifications/repositories';
 
 @Module({
-    controllers: [VouchersController, VoucherRequestController],
+    controllers: [VoucherRequestController],
     providers: [
         VouchersService,
         VouchersRepository,

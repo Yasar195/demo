@@ -18,10 +18,11 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 import { User } from '../users/entities/user.entity';
 
-@Controller('vouchers')
+@Controller('voucher-requests')
 @UseGuards(JwtAuthGuard)
-export class VouchersController {
+export class VoucherRequestController {
     constructor(private readonly vouchersService: VouchersService) { }
+
 
     @Get()
     async findAll(@Query() pagination: PaginationDto) {
@@ -55,12 +56,6 @@ export class VouchersController {
         await this.vouchersService.deleteVoucher(id);
         return BaseResponseDto.success(null, 'Voucher deleted successfully');
     }
-}
-
-@Controller('voucher-requests')
-@UseGuards(JwtAuthGuard)
-export class VoucherRequestController {
-    constructor(private readonly vouchersService: VouchersService) { }
 
     /**
      * Create a new voucher request (Store owner)
