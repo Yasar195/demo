@@ -1,15 +1,27 @@
-import { BaseEntity } from '../../../core/entities/base.entity';
+import { Voucher as PrismaVoucher, VoucherCategory } from '@prisma/client';
 
-export class Voucher extends BaseEntity {
+export class Voucher implements PrismaVoucher {
+    id: string;
     storeId: string;
     requestId: string | null;
     code: string;
     name: string;
     description: string | null;
-    value: number;
-    price: number;
+    faceValue: number;
+    sellingPrice: number;
     discount: number;
+    quantityTotal: number;
+    quantityAvailable: number;
     expiresAt: Date;
-    giftCardId?: string | null;
+    redemptionRules: string | null;
+    category: VoucherCategory;
+    image: string | null;
+    highlightColor: string | null;
+    status: string | null;
+    giftCardId: string | null;
     isVerified: boolean;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    deletedAt: Date | null;
 }

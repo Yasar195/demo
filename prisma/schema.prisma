@@ -59,28 +59,67 @@ model User {
   @@map("users")
 }
 
+enum VoucherCategory {
+  FASHION
+  FURNITURE
+  ELECTRONICS
+  GROCERIES
+  FOOD_BEVERAGE
+  HEALTH_BEAUTY
+  SPORTS_FITNESS
+  HOME_GARDEN
+  ENTERTAINMENT
+  TRAVEL
+  AUTOMOTIVE
+  SERVICES
+  OTHER
+}
+
 model Voucher {
-  id          String    @id @default(uuid())
-  storeId     String    @map("store_id")
-  requestId   String?   @unique @map("request_id")
-  code        String    @unique
-  name        String
-  description String?
-  value       Float
-  price       Float
-  discount    Float
-  expiresAt   DateTime
-  giftCardId  String?
-  isVerified  Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  id        String  @id @default(uuid())
+  storeId   String  @map("store_id")
+  requestId String? @unique @map("request_id")
+
+  // Core voucher information
+  code         String  @unique
+  name         String
+  description  String? // Small description
+  faceValue    Float   @map("face_value") // e.g., 100$
+  sellingPrice Float   @map("selling_price") // e.g., 40$
+  discount     Float // Auto-calculated or set
+
+  // Availability
+  quantityTotal     Int @map("quantity_total") // Total quantity
+  quantityAvailable Int @map("quantity_available") // Available quantity
+
+  // Validity
+  expiresAt DateTime @map("expires_at")
+
+  // Business rules
+  redemptionRules String?         @map("redemption_rules") // One text line
+  category        VoucherCategory @default(OTHER)
+
+  // Visual/UI
+  image          String? // Image URL
+  highlightColor String? @map("highlight_color") // Hex color code
+  status         String? // e.g., "HOT DEAL", "LIMITED", "NEW"
+
+  // Legacy/Additional fields
+  giftCardId String? @map("gift_card_id")
+  isVerified Boolean @default(false) @map("is_verified")
+  isActive   Boolean @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
 
   // Relations
   store   Store           @relation("StoreVouchers", fields: [storeId], references: [id])
   request VoucherRequest? @relation("ApprovedVoucher", fields: [requestId], references: [id])
 
   @@index([storeId], name: "voucher_store_idx")
+  @@index([category], name: "voucher_category_idx")
+  @@index([isActive], name: "voucher_active_idx")
   @@map("vouchers")
 }
 
@@ -114,11 +153,11 @@ model Store {
   deletedAt DateTime?
 
   // Relations
-  owner           User              @relation("StoreOwner", fields: [ownerId], references: [id])
-  request         StoreRequest?     @relation("ApprovedStore", fields: [requestId], references: [id])
+  owner           User             @relation("StoreOwner", fields: [ownerId], references: [id])
+  request         StoreRequest?    @relation("ApprovedStore", fields: [requestId], references: [id])
   locations       StoreLocation[]
-  voucherRequests VoucherRequest[]  @relation("StoreVoucherRequests")
-  vouchers        Voucher[]         @relation("StoreVouchers")
+  voucherRequests VoucherRequest[] @relation("StoreVoucherRequests")
+  vouchers        Voucher[]        @relation("StoreVouchers")
 
   @@map("stores")
 }
@@ -171,12 +210,17 @@ model VoucherRequest {
   storeId String @map("store_id")
 
   // Voucher information
-  voucherName        String   @map("voucher_name")
-  voucherDescription String?  @map("voucher_description")
-  voucherValue       Float    @map("voucher_value")
-  voucherPrice       Float    @map("voucher_price")
-  voucherCode        String   @map("voucher_code")
-  expiresAt          DateTime @map("expires_at")
+  voucherName        String          @map("voucher_name")
+  voucherDescription String?         @map("voucher_description")
+  voucherFaceValue   Float           @map("voucher_face_value")
+  voucherPrice       Float           @map("voucher_price")
+  voucherCode        String          @map("voucher_code")
+  quantityTotal      Int             @map("quantity_total")
+  expiresAt          DateTime        @map("expires_at")
+  redemptionRules    String?         @map("redemption_rules")
+  category           VoucherCategory @default(OTHER)
+  image              String? // Image URL
+  highlightColor     String?         @map("highlight_color")
 
   // Additional details
   additionalNotes String? @map("additional_notes")
@@ -201,6 +245,7 @@ model VoucherRequest {
   @@index([storeId], name: "voucher_request_store_idx")
   @@index([status], name: "voucher_request_status_idx")
   @@index([reviewedById], name: "voucher_request_reviewed_by_idx")
+  @@index([category], name: "voucher_request_category_idx")
   @@map("voucher_requests")
 }
 

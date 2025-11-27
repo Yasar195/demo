@@ -35,7 +35,7 @@ export class VouchersService extends BaseService<Voucher> {
             const sortBy = pagination?.sortBy;
             const sortOrder: 'asc' | 'desc' = pagination?.sortOrder?.toLowerCase() === 'desc' ? 'desc' : 'asc';
 
-            const allowedSortFields = ['createdAt', 'updatedAt', 'code', 'discount', 'expiresAt', 'isVerified'] as const;
+            const allowedSortFields = ['createdAt', 'updatedAt', 'code', 'discount', 'expiresAt', 'isVerified', 'faceValue', 'sellingPrice', 'category', 'isActive'] as const;
             type SortField = typeof allowedSortFields[number];
 
             const resolvedSortBy: SortField = allowedSortFields.includes(sortBy as SortField)
@@ -377,11 +377,18 @@ export class VouchersService extends BaseService<Voucher> {
                 code: request.voucherCode,
                 name: request.voucherName,
                 description: request.voucherDescription,
-                value: request.voucherValue,
-                price: request.voucherPrice,
-                discount: ((request.voucherValue - request.voucherPrice) / request.voucherValue) * 100,
+                faceValue: request.voucherFaceValue,
+                sellingPrice: request.voucherPrice,
+                discount: ((request.voucherFaceValue - request.voucherPrice) / request.voucherFaceValue) * 100,
+                quantityTotal: request.quantityTotal,
+                quantityAvailable: request.quantityTotal,
                 expiresAt: request.expiresAt,
+                redemptionRules: request.redemptionRules,
+                category: request.category,
+                image: request.image,
+                highlightColor: request.highlightColor,
                 isVerified: true,
+                isActive: true,
             } as Partial<Voucher>);
 
             // Get store and notify owner

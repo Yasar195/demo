@@ -1,5 +1,6 @@
-import { IsString, IsNumber, IsOptional, IsDateString, Min, MinLength } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsEnum, IsInt, IsDateString, Min, MinLength, IsUrl } from 'class-validator';
 import { Type } from 'class-transformer';
+import { VoucherCategory } from '@prisma/client';
 
 export class UpdateVoucherRequestDto {
     @IsString()
@@ -15,7 +16,7 @@ export class UpdateVoucherRequestDto {
     @IsNumber()
     @Min(0)
     @IsOptional()
-    voucherValue?: number;
+    voucherFaceValue?: number;
 
     @Type(() => Number)
     @IsNumber()
@@ -28,9 +29,32 @@ export class UpdateVoucherRequestDto {
     @IsOptional()
     voucherCode?: string;
 
+    @Type(() => Number)
+    @IsInt()
+    @Min(1)
+    @IsOptional()
+    quantityTotal?: number;
+
     @IsDateString()
     @IsOptional()
     expiresAt?: string;
+
+    @IsString()
+    @IsOptional()
+    redemptionRules?: string;
+
+    @IsEnum(VoucherCategory)
+    @IsOptional()
+    category?: VoucherCategory;
+
+    @IsString()
+    @IsOptional()
+    @IsUrl()
+    image?: string;
+
+    @IsString()
+    @IsOptional()
+    highlightColor?: string;
 
     @IsString()
     @IsOptional()
