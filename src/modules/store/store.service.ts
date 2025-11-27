@@ -10,7 +10,10 @@ import {
 import { StoreRequestRepository, StoreRepository } from './repositories';
 import { StoreRequest, Store } from './entities';
 import { CreateStoreRequestDto, UpdateStoreRequestDto, ApproveStoreRequestDto, RejectStoreRequestDto, QueryStoreRequestDto } from './dto';
-import { StoreRequestStatus } from '@prisma/client';
+import { StoreRequestStatus, UserRole } from '@prisma/client';
+import { UsersRepository } from '../users/repositories';
+import { NotificationsService } from '../notifications/notifications.service';
+import { PaginationDto } from 'src/common/dto';
 
 @Injectable()
 export class StoreService {
@@ -19,7 +22,9 @@ export class StoreService {
     constructor(
         private readonly storeRequestRepository: StoreRequestRepository,
         private readonly storeRepository: StoreRepository,
-    ) {}
+        private readonly userRepository: UsersRepository,
+        private readonly notificationService: NotificationsService
+    ) { }
 
     /**
      * Create a new store request
@@ -44,6 +49,20 @@ export class StoreService {
                 throw new BadRequestException('Your store request has been approved. A store should exist for your account.');
             }
 
+            const user = await this.userRepository.findById(userId);
+
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
+
+            const admins = await this.userRepository.findByCondition({ role: UserRole.ADMIN });
+
+            await this.notificationService.createNotification({
+                title: 'New Store Request',
+                message: `User ${user.name} has requested a new store`,
+                userIds: admins.map((admin) => admin.id),
+            });
+
             return await this.storeRequestRepository.create({
                 userId,
                 ...dto,
@@ -57,9 +76,24 @@ export class StoreService {
     /**
      * Get user's own store requests
      */
-    async getUserStoreRequests(userId: string): Promise<StoreRequest[]> {
+    async getUserStoreRequests(userId: string, pagination: PaginationDto): Promise<{ data: StoreRequest[]; total: number; page: number; totalPages: number }> {
         try {
-            return await this.storeRequestRepository.findByUserId(userId);
+            const page = pagination?.page ?? 1;
+            const limit = pagination?.limit ?? 10;
+            const sortBy = pagination?.sortBy;
+            const sortOrder: 'asc' | 'desc' = pagination?.sortOrder?.toLowerCase() === 'desc' ? 'desc' : 'asc';
+
+            const allowedSortFields = ['createdAt', 'updatedAt'] as const;
+            type SortField = typeof allowedSortFields[number];
+
+            const resolvedSortBy: SortField = allowedSortFields.includes(sortBy as SortField)
+                ? sortBy as SortField
+                : 'createdAt';
+
+            const orderBy: Record<string, 'asc' | 'desc'> = {
+                [resolvedSortBy]: sortBy ? sortOrder : 'desc',
+            };
+            return await this.storeRequestRepository.findWithPagination(page, limit, { userId }, orderBy);
         } catch (error) {
             this.handleError('getUserStoreRequests', error);
         }
@@ -110,6 +144,20 @@ export class StoreService {
             if (!updated) {
                 throw new NotFoundException('Failed to update store request');
             }
+
+            const user = await this.userRepository.findById(userId);
+
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
+
+            const admins = await this.userRepository.findByCondition({ role: UserRole.ADMIN });
+
+            await this.notificationService.createNotification({
+                title: 'Store Request Updated',
+                message: `User ${user.name} has updated their store request`,
+                userIds: admins.map((admin) => admin.id),
+            });
 
             return updated;
         } catch (error) {

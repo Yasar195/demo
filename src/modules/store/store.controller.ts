@@ -24,6 +24,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { BaseResponseDto } from '../../common/dto/base-response.dto';
 import { UserRole } from '@prisma/client';
 import { User } from '../users/entities/user.entity';
+import { PaginationDto } from 'src/common/dto';
 
 @Controller('store-requests')
 @UseGuards(JwtAuthGuard)
@@ -46,8 +47,8 @@ export class StoreController {
      * Get user's own store requests (User)
      */
     @Get('my-requests')
-    async getUserStoreRequests(@CurrentUser() user: User) {
-        const requests = await this.storeService.getUserStoreRequests(user.id);
+    async getUserStoreRequests(@CurrentUser() user: User, @Query() pagination: PaginationDto) {
+        const requests = await this.storeService.getUserStoreRequests(user.id, pagination);
         return BaseResponseDto.success(requests, 'Store requests retrieved successfully');
     }
 
