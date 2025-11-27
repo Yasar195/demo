@@ -15,6 +15,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { FirebaseModule } from './integrations/firebase';
 import { S3Module } from './integrations/s3';
 import { UploadsModule } from './modules/uploads/uploads.module';
+import { StoreModule } from './modules/store/store.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { UploadsModule } from './modules/uploads/uploads.module';
     PaymentsModule,
     NotificationsModule,
     UploadsModule,
+    StoreModule,
     IamModule,
   ],
   controllers: [AppController],
