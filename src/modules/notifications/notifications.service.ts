@@ -2,14 +2,19 @@ import { HttpException, Injectable, InternalServerErrorException, Logger } from 
 import { NotificationRecipient } from "@prisma/client";
 import { BaseService } from "src/core/abstracts";
 import { NotificationsRepository } from "./repositories/notifications.repository";
+import { DeviceTokenRepository } from "./repositories/device-token.repository";
 import { PaginationDto } from "src/common/dto";
+import { RegisterDeviceTokenDto } from "./dto/notifications.dto";
 
 @Injectable()
 export class NotificationsService extends BaseService<NotificationRecipient> {
 
     private readonly logger = new Logger(NotificationsService.name);
 
-    constructor(private readonly notificationsRepository: NotificationsRepository) {
+    constructor(
+        private readonly notificationsRepository: NotificationsRepository,
+        private readonly deviceTokenRepository: DeviceTokenRepository,
+    ) {
         super(notificationsRepository);
     }
 
@@ -65,6 +70,35 @@ export class NotificationsService extends BaseService<NotificationRecipient> {
             return await this.notificationsRepository.getNotificationCount(userId);
         } catch (error) {
             this.handleError('createNotification', error);
+        }
+    }
+
+    async registerDeviceToken(userId: string, dto: RegisterDeviceTokenDto): Promise<any> {
+        try {
+            return await this.deviceTokenRepository.registerToken(
+                userId,
+                dto.token,
+                dto.platform,
+                dto.deviceId
+            );
+        } catch (error) {
+            this.handleError('registerDeviceToken', error);
+        }
+    }
+
+    async unregisterDeviceToken(token: string): Promise<boolean> {
+        try {
+            return await this.deviceTokenRepository.deactivateToken(token);
+        } catch (error) {
+            this.handleError('unregisterDeviceToken', error);
+        }
+    }
+
+    async getUserDeviceTokens(userId: string): Promise<any[]> {
+        try {
+            return await this.deviceTokenRepository.findByUserId(userId);
+        } catch (error) {
+            this.handleError('getUserDeviceTokens', error);
         }
     }
 

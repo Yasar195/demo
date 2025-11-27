@@ -12,11 +12,13 @@ import { VouchersModule } from './modules/vouchers/vouchers.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { IamModule } from './iam/iam.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { FirebaseModule } from './integrations/firebase';
 
 @Module({
   imports: [
     ConfigModule,
     DatabaseModule,
+    FirebaseModule,
     CommonModule,
     ValidatorsModule,
     VaultModule,

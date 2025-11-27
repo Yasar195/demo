@@ -41,6 +41,12 @@ lerna-debug.log*
 .env.production.local
 .env.local
 
+# Firebase credentials
+**/firebase-service-account*.json
+**/firebase-adminsdk*.json
+firebase-credentials*.json
+config/firebase*.json
+
 # temp directory
 .temp
 .tmp

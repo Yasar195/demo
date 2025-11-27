@@ -1,9 +1,10 @@
-import { Controller, Get, Query, UseGuards, Param, Patch, Body } from "@nestjs/common";
+import { Controller, Get, Query, UseGuards, Param, Patch, Body, Post, Delete } from "@nestjs/common";
 import { NotificationsService } from "./notifications.service";
 import { JwtAuthGuard } from "src/iam/auth/guards/jwt-auth.guard";
 import { CurrentUser } from "src/common/decorators";
 import { BaseResponseDto, PaginationDto } from "src/common/dto";
 import { User } from "../users/entities/user.entity";
+import { RegisterDeviceTokenDto } from "./dto/notifications.dto";
 
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
@@ -32,6 +33,24 @@ export class NotificationsController {
     async findNotificationById(@Param('id') id: string) {
         const notifications = await this.notificationsService.findById(id);
         return BaseResponseDto.success(notifications, 'Notifications retrieved successfully')
+    }
+
+    @Post('device-token')
+    async registerDeviceToken(@CurrentUser() user: User, @Body() dto: RegisterDeviceTokenDto) {
+        const token = await this.notificationsService.registerDeviceToken(user.id, dto);
+        return BaseResponseDto.success(token, 'Device token registered successfully')
+    }
+
+    @Delete('device-token')
+    async unregisterDeviceToken(@Body('token') token: string) {
+        const result = await this.notificationsService.unregisterDeviceToken(token);
+        return BaseResponseDto.success({ deactivated: result }, 'Device token unregistered successfully')
+    }
+
+    @Get('device-tokens')
+    async getUserDeviceTokens(@CurrentUser() user: User) {
+        const tokens = await this.notificationsService.getUserDeviceTokens(user.id);
+        return BaseResponseDto.success(tokens, 'Device tokens retrieved successfully')
     }
 
 }

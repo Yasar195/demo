@@ -12,3 +12,9 @@ export interface NotificationRecipientDto {
 export interface MarkAsReadDto {
     notificationIds: string | string[];
 }
+
+export interface RegisterDeviceTokenDto {
+    token: string;
+    platform: 'IOS' | 'ANDROID' | 'WEB';
+    deviceId?: string;
+}
