@@ -23,4 +23,11 @@ export class VouchersRepository extends PrismaRepository<Voucher> {
         const voucher = await this.findByCode(code);
         return voucher !== null;
     }
+
+    /**
+     * Find vouchers by store ID
+     */
+    async findByStoreId(storeId: string): Promise<Voucher[]> {
+        return this.findByCondition({ storeId } as Partial<Voucher>);
+    }
 }

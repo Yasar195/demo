@@ -267,6 +267,19 @@ export class StoreService {
                 phone: request.storePhone,
             } as Partial<Store>);
 
+
+            const user = await this.userRepository.findById(request.userId);
+
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
+
+            await this.notificationService.createNotification({
+                title: 'New Store Request Approved',
+                message: `Greetings ${user.name}!\n Your store request has been approved. You can now access your store.`,
+                userIds: [user.id],
+            });
+
             this.logger.log(`Store created successfully for request ${id} by admin ${adminId}`);
             return store;
         } catch (error) {
@@ -299,6 +312,18 @@ export class StoreService {
             if (!updated) {
                 throw new NotFoundException('Failed to update store request');
             }
+
+            const user = await this.userRepository.findById(request.userId);
+
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
+
+            await this.notificationService.createNotification({
+                title: 'New Store Request Rejected',
+                message: `Hello ${user.name},\n We regret to inform you that your store request has been rejected. For more details, please check your store request page.`,
+                userIds: [user.id],
+            });
 
             this.logger.log(`Store request ${id} rejected by admin ${adminId}`);
             return updated;

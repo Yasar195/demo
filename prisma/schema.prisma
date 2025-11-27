@@ -27,6 +27,13 @@ enum DevicePlatform {
   WEB
 }
 
+enum VoucherRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 // Example User model
 model User {
   id         String    @id @default(uuid())
@@ -42,26 +49,38 @@ model User {
   updatedAt  DateTime  @updatedAt
   deletedAt  DateTime?
 
-  notification     NotificationRecipient[]
-  storeRequests    StoreRequest[]          @relation("UserStoreRequests")
-  reviewedRequests StoreRequest[]          @relation("AdminReviews")
-  ownedStore       Store?                  @relation("StoreOwner")
-  deviceTokens     DeviceToken[]
+  notification            NotificationRecipient[]
+  storeRequests           StoreRequest[]          @relation("UserStoreRequests")
+  reviewedRequests        StoreRequest[]          @relation("AdminReviews")
+  ownedStore              Store?                  @relation("StoreOwner")
+  deviceTokens            DeviceToken[]
+  reviewedVoucherRequests VoucherRequest[]        @relation("AdminVoucherReviews")
 
   @@map("users")
 }
 
 model Voucher {
-  id         String    @id @default(uuid())
-  code       String    @unique
-  discount   Float
-  expiresAt  DateTime
-  giftCardId String?
-  isVerified Boolean   @default(false)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  deletedAt  DateTime?
+  id          String    @id @default(uuid())
+  storeId     String    @map("store_id")
+  requestId   String?   @unique @map("request_id")
+  code        String    @unique
+  name        String
+  description String?
+  value       Float
+  price       Float
+  discount    Float
+  expiresAt   DateTime
+  giftCardId  String?
+  isVerified  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 
+  // Relations
+  store   Store           @relation("StoreVouchers", fields: [storeId], references: [id])
+  request VoucherRequest? @relation("ApprovedVoucher", fields: [requestId], references: [id])
+
+  @@index([storeId], name: "voucher_store_idx")
   @@map("vouchers")
 }
 
@@ -95,9 +114,11 @@ model Store {
   deletedAt DateTime?
 
   // Relations
-  owner     User            @relation("StoreOwner", fields: [ownerId], references: [id])
-  request   StoreRequest?   @relation("ApprovedStore", fields: [requestId], references: [id])
-  locations StoreLocation[]
+  owner           User              @relation("StoreOwner", fields: [ownerId], references: [id])
+  request         StoreRequest?     @relation("ApprovedStore", fields: [requestId], references: [id])
+  locations       StoreLocation[]
+  voucherRequests VoucherRequest[]  @relation("StoreVoucherRequests")
+  vouchers        Voucher[]         @relation("StoreVouchers")
 
   @@map("stores")
 }
@@ -143,6 +164,44 @@ model StoreRequest {
   @@index([reviewedById], name: "reviewed_by_id_idx")
   @@index([userId, status], name: "user_status_idx")
   @@map("store_requests")
+}
+
+model VoucherRequest {
+  id      String @id @default(uuid())
+  storeId String @map("store_id")
+
+  // Voucher information
+  voucherName        String   @map("voucher_name")
+  voucherDescription String?  @map("voucher_description")
+  voucherValue       Float    @map("voucher_value")
+  voucherPrice       Float    @map("voucher_price")
+  voucherCode        String   @map("voucher_code")
+  expiresAt          DateTime @map("expires_at")
+
+  // Additional details
+  additionalNotes String? @map("additional_notes")
+
+  // Request status
+  status VoucherRequestStatus @default(PENDING)
+
+  // Admin review
+  reviewedById  String?   @map("reviewed_by_id")
+  reviewedAt    DateTime? @map("reviewed_at")
+  adminComments String?   @map("admin_comments")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime?
+
+  // Relations
+  store           Store    @relation("StoreVoucherRequests", fields: [storeId], references: [id])
+  reviewedBy      User?    @relation("AdminVoucherReviews", fields: [reviewedById], references: [id])
+  approvedVoucher Voucher? @relation("ApprovedVoucher")
+
+  @@index([storeId], name: "voucher_request_store_idx")
+  @@index([status], name: "voucher_request_status_idx")
+  @@index([reviewedById], name: "voucher_request_reviewed_by_idx")
+  @@map("voucher_requests")
 }
 
 model StoreLocation {
