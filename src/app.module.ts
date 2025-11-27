@@ -13,12 +13,14 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { IamModule } from './iam/iam.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { FirebaseModule } from './integrations/firebase';
+import { S3Module } from './integrations/s3';
 
 @Module({
   imports: [
     ConfigModule,
     DatabaseModule,
     FirebaseModule,
+    S3Module,
     CommonModule,
     ValidatorsModule,
     VaultModule,
