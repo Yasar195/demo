@@ -10,7 +10,6 @@ import {
 } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { Readable } from 'stream';
 
 export interface UploadOptions {
     buffer: Buffer;
@@ -45,7 +44,7 @@ export class S3Service implements OnModuleInit {
         try {
             const accessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID');
             const secretAccessKey = this.configService.get<string>('AWS_SECRET_ACCESS_KEY');
-            this.region = this.configService.get<string>('AWS_REGION') || 'us-east-1';
+            this.region = this.configService.get<string>('AWS_S3_REGION') || 'us-east-1';
             this.bucket = this.configService.get<string>('AWS_S3_BUCKET') || 'default-bucket';
 
             if (!accessKeyId || !secretAccessKey || !this.bucket) {

@@ -14,6 +14,7 @@ import { IamModule } from './iam/iam.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { FirebaseModule } from './integrations/firebase';
 import { S3Module } from './integrations/s3';
+import { UploadsModule } from './modules/uploads/uploads.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { S3Module } from './integrations/s3';
     VouchersModule,
     PaymentsModule,
     NotificationsModule,
+    UploadsModule,
     IamModule,
   ],
   controllers: [AppController],
