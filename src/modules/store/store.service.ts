@@ -10,11 +10,14 @@ import {
 import { StoreRequestRepository, StoreRepository } from './repositories';
 import { StoreRequest, Store } from './entities';
 import { CreateStoreRequestDto, UpdateStoreRequestDto, ApproveStoreRequestDto, RejectStoreRequestDto, QueryStoreRequestDto, VendorDashboardStatsDto, VoucherStatsDto, RevenueStatsDto, StoreInfoDto } from './dto';
-import { StoreRequestStatus, UserRole, PaymentStatus, VoucherRequestStatus } from '@prisma/client';
+import { StoreRequestStatus, UserRole, PaymentStatus } from '@prisma/client';
 import { UsersRepository } from '../users/repositories';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PaginationDto } from 'src/common/dto';
 import { PrismaService } from '../../database/prisma.service';
+import { PaymentsRepository } from '../payments/repositories/payments.repository';
+import { VouchersRepository } from '../vouchers/repositories/vouchers.repository';
+import { VoucherRequestRepository } from '../vouchers/repositories/voucher-request.repository';
 
 @Injectable()
 export class StoreService {
@@ -25,7 +28,10 @@ export class StoreService {
         private readonly storeRepository: StoreRepository,
         private readonly userRepository: UsersRepository,
         private readonly notificationService: NotificationsService,
-        private readonly prisma: PrismaService
+        private readonly prisma: PrismaService,
+        private readonly paymentsRepository: PaymentsRepository,
+        private readonly vouchersRepository: VouchersRepository,
+        private readonly voucherRequestRepository: VoucherRequestRepository,
     ) { }
 
     /**
@@ -408,59 +414,13 @@ export class StoreService {
      * Get voucher statistics for a store
      */
     private async getVoucherStats(storeId: string): Promise<VoucherStatsDto> {
-        const now = new Date();
-
-        const [totalVouchers, activeVouchers, expiredVouchers, vouchersSold, totalQuantityData] =
+        const [totalVouchers, activeVouchers, expiredVouchers, vouchersSold, totalQuantityAvailable] =
             await Promise.all([
-                // Total vouchers
-                this.prisma.voucher.count({
-                    where: {
-                        storeId,
-                        deletedAt: null,
-                    },
-                }),
-                // Active vouchers (not expired and active)
-                this.prisma.voucher.count({
-                    where: {
-                        storeId,
-                        deletedAt: null,
-                        isActive: true,
-                        expiresAt: {
-                            gt: now,
-                        },
-                    },
-                }),
-                // Expired vouchers
-                this.prisma.voucher.count({
-                    where: {
-                        storeId,
-                        deletedAt: null,
-                        expiresAt: {
-                            lte: now,
-                        },
-                    },
-                }),
-                // Count of vouchers sold (based on completed payments)
-                this.prisma.payment.count({
-                    where: {
-                        voucher: {
-                            storeId,
-                        },
-                        status: PaymentStatus.COMPLETED,
-                        deletedAt: null,
-                    },
-                }),
-                // Sum of available quantities
-                this.prisma.voucher.aggregate({
-                    where: {
-                        storeId,
-                        deletedAt: null,
-                        isActive: true,
-                    },
-                    _sum: {
-                        quantityAvailable: true,
-                    },
-                }),
+                this.vouchersRepository.countByStoreId(storeId),
+                this.vouchersRepository.countActiveByStoreId(storeId),
+                this.vouchersRepository.countExpiredByStoreId(storeId),
+                this.paymentsRepository.countVouchersSoldByStore(storeId),
+                this.vouchersRepository.sumAvailableQuantityByStoreId(storeId),
             ]);
 
         return {
@@ -468,7 +428,7 @@ export class StoreService {
             activeVouchers,
             expiredVouchers,
             vouchersSold,
-            totalQuantityAvailable: totalQuantityData._sum.quantityAvailable || 0,
+            totalQuantityAvailable,
         };
     }
 
@@ -476,52 +436,15 @@ export class StoreService {
      * Get revenue statistics for a store
      */
     private async getRevenueStats(storeId: string): Promise<RevenueStatsDto> {
-        const [totalRevenue, completedRevenue, pendingRevenue] = await Promise.all([
-            // Total revenue (all completed payments)
-            this.prisma.payment.aggregate({
-                where: {
-                    voucher: {
-                        storeId,
-                    },
-                    status: PaymentStatus.COMPLETED,
-                    deletedAt: null,
-                },
-                _sum: {
-                    amount: true,
-                },
-            }),
-            // Completed revenue (redundant but keeping for clarity)
-            this.prisma.payment.aggregate({
-                where: {
-                    voucher: {
-                        storeId,
-                    },
-                    status: PaymentStatus.COMPLETED,
-                    deletedAt: null,
-                },
-                _sum: {
-                    amount: true,
-                },
-            }),
-            // Pending revenue
-            this.prisma.payment.aggregate({
-                where: {
-                    voucher: {
-                        storeId,
-                    },
-                    status: PaymentStatus.PENDING,
-                    deletedAt: null,
-                },
-                _sum: {
-                    amount: true,
-                },
-            }),
+        const [completedRevenue, pendingRevenue] = await Promise.all([
+            this.paymentsRepository.getRevenueByStore(storeId, PaymentStatus.COMPLETED),
+            this.paymentsRepository.getRevenueByStore(storeId, PaymentStatus.PENDING),
         ]);
 
         return {
-            totalRevenue: totalRevenue._sum.amount || 0,
-            completedRevenue: completedRevenue._sum.amount || 0,
-            pendingRevenue: pendingRevenue._sum.amount || 0,
+            totalRevenue: completedRevenue,
+            completedRevenue,
+            pendingRevenue,
             currency: 'INR',
         };
     }
@@ -530,13 +453,7 @@ export class StoreService {
      * Get count of pending voucher requests
      */
     private async getPendingVoucherRequests(storeId: string): Promise<number> {
-        return this.prisma.voucherRequest.count({
-            where: {
-                storeId,
-                status: VoucherRequestStatus.PENDING,
-                deletedAt: null,
-            },
-        });
+        return this.voucherRequestRepository.countPendingByStoreId(storeId);
     }
 
     private handleError(context: string, error: unknown): never {

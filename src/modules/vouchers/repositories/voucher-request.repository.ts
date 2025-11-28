@@ -78,4 +78,29 @@ export class VoucherRequestRepository extends PrismaRepository<VoucherRequest> {
             totalPages: Math.ceil(total / limit),
         };
     }
+
+    /**
+     * Count pending voucher requests by store ID
+     */
+    async countPendingByStoreId(storeId: string): Promise<number> {
+        return this.model.count({
+            where: {
+                storeId,
+                status: VoucherRequestStatus.PENDING,
+                deletedAt: null,
+            },
+        });
+    }
+
+    /**
+     * Count all pending voucher requests (for admin dashboard)
+     */
+    async countAllPending(): Promise<number> {
+        return this.model.count({
+            where: {
+                status: VoucherRequestStatus.PENDING,
+                deletedAt: null,
+            },
+        });
+    }
 }

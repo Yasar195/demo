@@ -22,6 +22,6 @@ import { SseModule } from '../sse/sse.module';
         NotificationsRepository,
         DeviceTokenRepository,
     ],
-    exports: [VouchersService],
+    exports: [VouchersService, VouchersRepository, VoucherRequestRepository],
 })
 export class VouchersModule { }

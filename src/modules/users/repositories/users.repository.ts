@@ -38,4 +38,15 @@ export class UsersRepository extends PrismaRepository<User> {
         const user = await this.findByEmail(email);
         return user !== null;
     }
+
+    /**
+     * Count total users (for admin dashboard)
+     */
+    async countTotal(): Promise<number> {
+        return this.model.count({
+            where: {
+                deletedAt: null,
+            },
+        });
+    }
 }

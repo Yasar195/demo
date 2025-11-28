@@ -102,4 +102,16 @@ export class StoreRequestRepository extends PrismaRepository<StoreRequest> {
         } as Partial<StoreRequest>);
         return request !== null;
     }
+
+    /**
+     * Count all pending store requests (for admin dashboard)
+     */
+    async countAllPending(): Promise<number> {
+        return this.model.count({
+            where: {
+                status: StoreRequestStatus.PENDING,
+                deletedAt: null,
+            },
+        });
+    }
 }

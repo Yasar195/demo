@@ -30,4 +30,78 @@ export class VouchersRepository extends PrismaRepository<Voucher> {
     async findByStoreId(storeId: string): Promise<Voucher[]> {
         return this.findByCondition({ storeId } as Partial<Voucher>);
     }
+
+    /**
+     * Count total vouchers by store ID
+     */
+    async countByStoreId(storeId: string): Promise<number> {
+        return this.model.count({
+            where: {
+                storeId,
+                deletedAt: null,
+            },
+        });
+    }
+
+    /**
+     * Count active vouchers by store ID (not expired and isActive=true)
+     */
+    async countActiveByStoreId(storeId: string): Promise<number> {
+        return this.model.count({
+            where: {
+                storeId,
+                deletedAt: null,
+                isActive: true,
+                expiresAt: {
+                    gt: new Date(),
+                },
+            },
+        });
+    }
+
+    /**
+     * Count expired vouchers by store ID
+     */
+    async countExpiredByStoreId(storeId: string): Promise<number> {
+        return this.model.count({
+            where: {
+                storeId,
+                deletedAt: null,
+                expiresAt: {
+                    lte: new Date(),
+                },
+            },
+        });
+    }
+
+    /**
+     * Sum of available quantities for active vouchers by store ID
+     */
+    async sumAvailableQuantityByStoreId(storeId: string): Promise<number> {
+        const result = await this.model.aggregate({
+            where: {
+                storeId,
+                deletedAt: null,
+                isActive: true,
+            },
+            _sum: {
+                quantityAvailable: true,
+            },
+        });
+
+        return result._sum.quantityAvailable || 0;
+    }
+
+    /**
+     * Count total active stores (for admin dashboard)
+     */
+    async countActiveStores(): Promise<number> {
+        const result = await this.prisma.store.count({
+            where: {
+                deletedAt: null,
+            },
+        });
+
+        return result;
+    }
 }

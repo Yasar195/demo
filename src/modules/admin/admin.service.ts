@@ -1,13 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../database/prisma.service';
 import { DashboardStatsDto, DetailedDashboardStatsDto, RevenueBreakdownDto } from './dto';
 import { PaymentStatus } from '@prisma/client';
+import { UsersRepository } from '../users/repositories/users.repository';
+import { PaymentsRepository } from '../payments/repositories/payments.repository';
+import { VouchersRepository } from '../vouchers/repositories/vouchers.repository';
+import { VoucherRequestRepository } from '../vouchers/repositories/voucher-request.repository';
+import { StoreRequestRepository } from '../store/repositories/store-request.repository';
 
 @Injectable()
 export class AdminService {
     private readonly logger = new Logger(AdminService.name);
 
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly usersRepository: UsersRepository,
+        private readonly paymentsRepository: PaymentsRepository,
+        private readonly vouchersRepository: VouchersRepository,
+        private readonly voucherRequestRepository: VoucherRequestRepository,
+        private readonly storeRequestRepository: StoreRequestRepository,
+    ) { }
 
     /**
      * Get basic dashboard statistics
@@ -77,40 +87,24 @@ export class AdminService {
      * Get total number of users
      */
     private async getTotalUsers(): Promise<number> {
-        return this.prisma.user.count({
-            where: {
-                deletedAt: null,
-            },
-        });
+        return this.usersRepository.countTotal();
     }
 
     /**
      * Get count of active stores
      */
     private async getActiveStores(): Promise<number> {
-        return this.prisma.store.count({
-            where: {
-                deletedAt: null,
-            },
-        });
+        return this.vouchersRepository.countActiveStores();
     }
 
     /**
      * Get total revenue from completed payments
      */
     private async getTotalRevenue(): Promise<{ total: number; currency: string }> {
-        const result = await this.prisma.payment.aggregate({
-            where: {
-                status: PaymentStatus.COMPLETED,
-                deletedAt: null,
-            },
-            _sum: {
-                amount: true,
-            },
-        });
+        const total = await this.paymentsRepository.getTotalRevenue(PaymentStatus.COMPLETED);
 
         return {
-            total: result._sum.amount || 0,
+            total,
             currency: 'INR',
         };
     }
@@ -120,29 +114,17 @@ export class AdminService {
      */
     private async getRevenueBreakdown(): Promise<RevenueBreakdownDto> {
         const [completed, pending, failed, refunded] = await Promise.all([
-            this.prisma.payment.aggregate({
-                where: { status: PaymentStatus.COMPLETED, deletedAt: null },
-                _sum: { amount: true },
-            }),
-            this.prisma.payment.aggregate({
-                where: { status: PaymentStatus.PENDING, deletedAt: null },
-                _sum: { amount: true },
-            }),
-            this.prisma.payment.aggregate({
-                where: { status: PaymentStatus.FAILED, deletedAt: null },
-                _sum: { amount: true },
-            }),
-            this.prisma.payment.aggregate({
-                where: { status: PaymentStatus.REFUNDED, deletedAt: null },
-                _sum: { amount: true },
-            }),
+            this.paymentsRepository.getTotalRevenue(PaymentStatus.COMPLETED),
+            this.paymentsRepository.getTotalRevenue(PaymentStatus.PENDING),
+            this.paymentsRepository.getTotalRevenue(PaymentStatus.FAILED),
+            this.paymentsRepository.getTotalRevenue(PaymentStatus.REFUNDED),
         ]);
 
         return {
-            completed: completed._sum.amount || 0,
-            pending: pending._sum.amount || 0,
-            failed: failed._sum.amount || 0,
-            refunded: refunded._sum.amount || 0,
+            completed,
+            pending,
+            failed,
+            refunded,
         };
     }
 
@@ -155,15 +137,9 @@ export class AdminService {
         pending: number;
     }> {
         const [total, completed, pending] = await Promise.all([
-            this.prisma.payment.count({
-                where: { deletedAt: null },
-            }),
-            this.prisma.payment.count({
-                where: { status: PaymentStatus.COMPLETED, deletedAt: null },
-            }),
-            this.prisma.payment.count({
-                where: { status: PaymentStatus.PENDING, deletedAt: null },
-            }),
+            this.paymentsRepository.countAll(),
+            this.paymentsRepository.countByStatus(PaymentStatus.COMPLETED),
+            this.paymentsRepository.countByStatus(PaymentStatus.PENDING),
         ]);
 
         return { total, completed, pending };
@@ -173,23 +149,13 @@ export class AdminService {
      * Get count of pending store requests
      */
     private async getPendingStoreRequests(): Promise<number> {
-        return this.prisma.storeRequest.count({
-            where: {
-                status: 'PENDING',
-                deletedAt: null,
-            },
-        });
+        return this.storeRequestRepository.countAllPending();
     }
 
     /**
      * Get count of pending voucher requests
      */
     private async getPendingVoucherRequests(): Promise<number> {
-        return this.prisma.voucherRequest.count({
-            where: {
-                status: 'PENDING',
-                deletedAt: null,
-            },
-        });
+        return this.voucherRequestRepository.countAllPending();
     }
 }
