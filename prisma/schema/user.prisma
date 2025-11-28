@@ -1,17 +1,18 @@
 // User model
 model User {
-  id         String    @id @default(uuid())
-  email      String    @unique
-  name       String
-  password   String?
-  provider   String    @default("local")
-  providerId String?   @unique
-  avatarUrl  String?
-  lastLogin  DateTime?
-  role       UserRole  @default(USER)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  deletedAt  DateTime?
+  id                 String    @id @default(uuid())
+  email              String    @unique
+  name               String
+  password           String?
+  provider           String    @default("local")
+  providerId         String?   @unique
+  avatarUrl          String?
+  hashedRefreshToken String?   @map("hashed_refresh_token")
+  lastLogin          DateTime?
+  role               UserRole  @default(USER)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
 
   notification            NotificationRecipient[]
   storeRequests           StoreRequest[]          @relation("UserStoreRequests")

@@ -7,7 +7,8 @@ export class User extends BaseEntity {
     password?: string | null;
     provider: string;
     providerId?: string | null;
-    avatarUrl?: string | null;
-    lastLogin?: Date | null;
+    avatarUrl: string | null;
+    hashedRefreshToken: string | null;
+    lastLogin: Date | null;
     role: UserRole;
 }

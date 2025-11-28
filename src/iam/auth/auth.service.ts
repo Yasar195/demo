@@ -77,6 +77,8 @@ export class AuthService {
             expiresIn: refreshTokenExpiresIn,
         });
 
+        await this.usersService.updateRefreshToken(user.id, hashPassword(refreshToken));
+
         return { accessToken, refreshToken };
     }
 
@@ -125,5 +127,32 @@ export class AuthService {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { password, ...safeUser } = user;
         return safeUser;
+    }
+
+    async refreshTokens(refreshToken: string): Promise<AuthTokens> {
+        try {
+            const payload = await this.jwtService.verifyAsync(refreshToken, {
+                secret: this.configService.get<string>('jwt.refreshSecret'),
+            });
+
+            const user = await this.usersService.findById(payload.sub);
+            if (!user || !user.hashedRefreshToken) {
+                throw new UnauthorizedException('Access denied');
+            }
+
+            const refreshTokenMatches = hashPassword(refreshToken) === user.hashedRefreshToken;
+            if (!refreshTokenMatches) {
+                throw new UnauthorizedException('Access denied');
+            }
+
+            const tokens = await this.generateTokens(user);
+            return tokens;
+        } catch (error) {
+            throw new UnauthorizedException('Invalid refresh token');
+        }
+    }
+
+    async logout(userId: string): Promise<void> {
+        await this.usersService.updateRefreshToken(userId, null);
     }
 }

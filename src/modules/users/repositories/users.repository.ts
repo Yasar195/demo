@@ -49,4 +49,13 @@ export class UsersRepository extends PrismaRepository<User> {
             },
         });
     }
+    /**
+     * Update refresh token
+     */
+    async updateRefreshToken(userId: string, refreshToken: string | null): Promise<void> {
+        await this.model.update({
+            where: { id: userId },
+            data: { hashedRefreshToken: refreshToken },
+        });
+    }
 }

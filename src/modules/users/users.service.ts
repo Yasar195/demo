@@ -195,4 +195,14 @@ export class UsersService extends BaseService<User> {
         }
         throw new InternalServerErrorException('Internal server error');
     }
+    /**
+     * Update refresh token
+     */
+    async updateRefreshToken(userId: string, refreshToken: string | null): Promise<void> {
+        try {
+            await this.usersRepository.updateRefreshToken(userId, refreshToken);
+        } catch (error) {
+            this.handleError('updateRefreshToken', error);
+        }
+    }
 }
