@@ -17,6 +17,7 @@ import { S3Module } from './integrations/s3';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { StoreModule } from './modules/store/store.module';
 import { SseModule } from './modules/sse/sse.module';
+import { QrCodeModule } from './common/qrcode/qrcode.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { SseModule } from './modules/sse/sse.module';
     FirebaseModule,
     S3Module,
     CommonModule,
+    QrCodeModule,
     ValidatorsModule,
     VaultModule,
     HealthModule,
