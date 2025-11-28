@@ -1,0 +1,27 @@
+import { UserRole } from '@prisma/client';
+
+export type SSEEventType =
+    | 'notification'
+    | 'voucher_created'
+    | 'voucher_updated'
+    | 'voucher_request_approved'
+    | 'voucher_request_rejected'
+    | 'voucher_request_created'
+    | 'store_request_approved'
+    | 'store_request_rejected'
+    | 'heartbeat';
+
+export interface SSEEvent {
+    id: string;
+    type: SSEEventType;
+    timestamp: number;
+    data: any;
+    userId?: string;
+    role?: UserRole;
+}
+
+export interface SSEClient {
+    userId: string;
+    role: UserRole;
+    lastActivity: number;
+}

@@ -20,7 +20,7 @@ export class NotificationsRepository extends PrismaRepository<NotificationRecipi
         return this.findByCondition({ userId } as Partial<NotificationRecipient>);
     }
 
-    async createNotification(data: NotificationDto): Promise<void> {
+    async createNotification(data: NotificationDto): Promise<{ id: string; createdAt: Date }> {
         // Create notification in database
         const notification = await this.prisma.notification.create({
             data: {
@@ -46,6 +46,8 @@ export class NotificationsRepository extends PrismaRepository<NotificationRecipi
                 type: 'notification',
             }
         });
+
+        return { id: notification.id, createdAt: notification.createdAt };
     }
 
     private async sendPushNotifications(

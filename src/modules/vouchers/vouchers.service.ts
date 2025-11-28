@@ -10,6 +10,7 @@ import { UserRole, VoucherRequestStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersRepository } from '../users/repositories';
 import { StoreRepository } from '../store/repositories';
+import { SseService } from '../sse/sse.service';
 
 @Injectable()
 export class VouchersService extends BaseService<Voucher> {
@@ -21,6 +22,7 @@ export class VouchersService extends BaseService<Voucher> {
         private readonly storeRepository: StoreRepository,
         private readonly usersRepository: UsersRepository,
         private readonly notificationsService: NotificationsService,
+        private readonly sseService: SseService,
     ) {
         super(vouchersRepository);
     }
@@ -399,6 +401,17 @@ export class VouchersService extends BaseService<Voucher> {
                     message: `Great news! Your voucher request "${request.voucherName}" has been approved and is now live.`,
                     userIds: [store.ownerId],
                 });
+
+                // Send SSE event
+                this.sseService.sendToUser(store.ownerId, 'voucher_request_approved', {
+                    requestId: id,
+                    voucherName: request.voucherName,
+                    voucher: {
+                        id: voucher.id,
+                        code: voucher.code,
+                        name: voucher.name,
+                    },
+                });
             }
 
             this.logger.log(`Voucher created successfully for request ${id} by admin ${adminId}`);
@@ -441,6 +454,13 @@ export class VouchersService extends BaseService<Voucher> {
                     title: 'Voucher Request Rejected',
                     message: `We regret to inform you that your voucher request "${request.voucherName}" has been rejected. ${dto.adminComments ? 'Reason: ' + dto.adminComments : 'Please review the admin comments for details.'}`,
                     userIds: [store.ownerId],
+                });
+
+                // Send SSE event
+                this.sseService.sendToUser(store.ownerId, 'voucher_request_rejected', {
+                    requestId: id,
+                    voucherName: request.voucherName,
+                    adminComments: dto.adminComments,
                 });
             }
 

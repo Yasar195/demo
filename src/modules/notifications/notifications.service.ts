@@ -5,6 +5,7 @@ import { NotificationsRepository } from "./repositories/notifications.repository
 import { DeviceTokenRepository } from "./repositories/device-token.repository";
 import { PaginationDto } from "src/common/dto";
 import { RegisterDeviceTokenDto } from "./dto/notifications.dto";
+import { SseService } from "../sse/sse.service";
 
 @Injectable()
 export class NotificationsService extends BaseService<NotificationRecipient> {
@@ -14,6 +15,7 @@ export class NotificationsService extends BaseService<NotificationRecipient> {
     constructor(
         private readonly notificationsRepository: NotificationsRepository,
         private readonly deviceTokenRepository: DeviceTokenRepository,
+        private readonly sseService: SseService,
     ) {
         super(notificationsRepository);
     }
@@ -41,13 +43,27 @@ export class NotificationsService extends BaseService<NotificationRecipient> {
         }
     }
 
-    async createNotification(data: { title: string; message: string; userIds: string[] }): Promise<void> {
+    async createNotification(data: { title: string; message: string; userIds: string[]; metadata?: any }): Promise<void> {
         try {
-            await this.notificationsRepository.createNotification(data);
+            const notification = await this.notificationsRepository.createNotification(data);
+
+            // Send SSE events to each user
+            for (const userId of data.userIds) {
+                this.sseService.sendToUser(userId, 'notification', {
+                    id: notification.id,
+                    title: data.title,
+                    message: data.message,
+                    metadata: data.metadata,
+                    createdAt: notification.createdAt,
+                });
+            }
+
+            this.logger.log(`Notification created and SSE events sent to ${data.userIds.length} users`);
         } catch (error) {
             this.handleError('createNotification', error);
         }
     }
+
 
     async findById(id: string): Promise<NotificationRecipient | null> {
         try {

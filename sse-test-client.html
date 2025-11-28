@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE Test Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .connected {
+            background: #4CAF50;
+            color: white;
+        }
+        .disconnected {
+            background: #f44336;
+            color: white;
+        }
+        .events {
+            margin-top: 20px;
+        }
+        .event {
+            background: #f9f9f9;
+            border-left: 4px solid #2196F3;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .event-type {
+            font-weight: bold;
+            color: #2196F3;
+        }
+        .timestamp {
+            color: #666;
+            font-size: 12px;
+        }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .clear-btn {
+            background: #ff9800;
+        }
+        .clear-btn:hover {
+            background: #f57c00;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔔 SSE Test Client</h1>
+        
+        <div>
+            <label for="apiUrl">API URL:</label>
+            <input 
+                type="text" 
+                id="apiUrl" 
+                placeholder="http://localhost:3000/api/sse/stream"
+                value="http://localhost:3000/api/sse/stream"
+            />
+        </div>
+
+        <div>
+            <label for="jwtToken">JWT Token (from login):</label>
+            <input 
+                type="password" 
+                id="jwtToken" 
+                placeholder="Paste your JWT token here"
+            />
+        </div>
+        
+        <div>
+            <button id="connectBtn" onclick="connect()">Connect</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+            <button class="clear-btn" onclick="clearEvents()">Clear Events</button>
+        </div>
+
+        <div id="status" class="status disconnected">Disconnected</div>
+
+        <div class="events">
+            <h2>Events (Latest First)</h2>
+            <div id="eventsList"></div>
+        </div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let eventCount = 0;
+
+        function connect() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const token = document.getElementById('jwtToken').value;
+
+            if (!token) {
+                alert('Please provide a JWT token');
+                return;
+            }
+
+            // Close existing connection
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            // Create new EventSource with credentials
+            // Note: EventSource doesn't support custom headers directly
+            // So we pass the token as a query parameter
+            const url = `${apiUrl}?token=${encodeURIComponent(token)}`;
+            
+            eventSource = new EventSource(url, {
+                withCredentials: true
+            });
+
+            eventSource.onopen = () => {
+                updateStatus(true);
+                addEvent('Connection', 'Connected to SSE stream', {});
+            };
+
+            eventSource.onerror = (error) => {
+                console.error('SSE Error:', error);
+                updateStatus(false);
+                addEvent('Error', 'Connection error occurred', { error });
+            };
+
+            eventSource.onmessage = (event) => {
+                console.log('SSE Event:', event);
+                try {
+                    const data = JSON.parse(event.data);
+                    addEvent(data.type || 'message', data, event);
+                } catch (e) {
+                    addEvent('message', event.data, event);
+                }
+            };
+
+            // Listen for specific event types
+            const eventTypes = [
+                'notification',
+                'voucher_created',
+                'voucher_updated',
+                'voucher_request_approved',
+                'voucher_request_rejected',
+                'heartbeat'
+            ];
+
+            eventTypes.forEach(type => {
+                eventSource.addEventListener(type, (event) => {
+                    console.log(`${type} event:`, event);
+                    try {
+                        const data = JSON.parse(event.data);
+                        addEvent(type, data, event);
+                    } catch (e) {
+                        addEvent(type, event.data, event);
+                    }
+                });
+            });
+        }
+
+        function disconnect() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                updateStatus(false);
+                addEvent('Connection', 'Disconnected from SSE stream', {});
+            }
+        }
+
+        function updateStatus(connected) {
+            const statusEl = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+
+            if (connected) {
+                statusEl.textContent = 'Connected';
+                statusEl.className = 'status connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+            } else {
+                statusEl.textContent = 'Disconnected';
+                statusEl.className = 'status disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            }
+        }
+
+        function addEvent(type, data, event) {
+            eventCount++;
+            const eventsList = document.getElementById('eventsList');
+            const eventDiv = document.createElement('div');
+            eventDiv.className = 'event';
+            
+            const now = new Date().toLocaleTimeString();
+            
+            eventDiv.innerHTML = `
+                <div class="event-type">#${eventCount} ${type.toUpperCase()}</div>
+                <div class="timestamp">${now}</div>
+                <pre style="margin: 10px 0; background: #f0f0f0; padding: 10px; border-radius: 4px; overflow-x: auto;">${JSON.stringify(data, null, 2)}</pre>
+            `;
+            
+            // Insert at the top
+            eventsList.insertBefore(eventDiv, eventsList.firstChild);
+        }
+
+        function clearEvents() {
+            document.getElementById('eventsList').innerHTML = '';
+            eventCount = 0;
+        }
+
+        // Auto-save token to localStorage
+        const jwtInput = document.getElementById('jwtToken');
+        const savedToken = localStorage.getItem('sseTestToken');
+        if (savedToken) {
+            jwtInput.value = savedToken;
+        }
+
+        jwtInput.addEventListener('change', (e) => {
+            localStorage.setItem('sseTestToken', e.target.value);
+        });
+    </script>
+</body>
+</html>

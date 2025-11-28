@@ -7,8 +7,10 @@ import { StoreRepository } from '../store/repositories';
 import { UsersRepository } from '../users/repositories';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsRepository, DeviceTokenRepository } from '../notifications/repositories';
+import { SseModule } from '../sse/sse.module';
 
 @Module({
+    imports: [SseModule],
     controllers: [VoucherRequestController],
     providers: [
         VouchersService,
