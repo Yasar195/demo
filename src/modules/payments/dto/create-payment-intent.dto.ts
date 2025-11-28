@@ -19,4 +19,13 @@ export class CreatePaymentIntentDto {
     @IsOptional()
     @IsObject()
     metadata?: Record<string, string>;
+
+    @IsString()
+    purpose: 'VOUCHER';
+
+    @IsString()
+    targetId: string;
+
+    @IsString()
+    paymentMethod: 'CREDIT_CARD' | 'DEBIT_CARD' | 'UPI' | 'NET_BANKING' | 'WALLET' | 'CASH' | 'OTHER';
 }

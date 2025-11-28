@@ -1,8 +1,9 @@
 // Payment model
 model Payment {
-  id        String  @id @default(uuid())
-  userId    String  @map("user_id")
-  voucherId String? @map("voucher_id") // Nullable for now, but will be linked when user buys vouchers
+  id        String         @id @default(uuid())
+  userId    String         @map("user_id")
+  voucherId String?        @map("voucher_id") // Nullable for now, but will be linked when user buys vouchers
+  purpose   PaymentPurpose
 
   // Transaction details
   amount        Float         @map("amount") // Amount paid
@@ -28,8 +29,10 @@ model Payment {
   deletedAt   DateTime?
 
   // Relations
-  user    User     @relation("UserPayments", fields: [userId], references: [id])
-  voucher Voucher? @relation("VoucherPayments", fields: [voucherId], references: [id])
+  user             User            @relation("UserPayments", fields: [userId], references: [id])
+  voucher          Voucher?        @relation("VoucherPayments", fields: [voucherId], references: [id])
+  voucherRequest   VoucherRequest? @relation(fields: [voucherRequestId], references: [id])
+  voucherRequestId String?
 
   @@index([userId], name: "payment_user_idx")
   @@index([voucherId], name: "payment_voucher_idx")

@@ -81,9 +81,10 @@ model VoucherRequest {
   deletedAt DateTime?
 
   // Relations
-  store           Store    @relation("StoreVoucherRequests", fields: [storeId], references: [id])
-  reviewedBy      User?    @relation("AdminVoucherReviews", fields: [reviewedById], references: [id])
-  approvedVoucher Voucher? @relation("ApprovedVoucher")
+  store           Store     @relation("StoreVoucherRequests", fields: [storeId], references: [id])
+  reviewedBy      User?     @relation("AdminVoucherReviews", fields: [reviewedById], references: [id])
+  approvedVoucher Voucher?  @relation("ApprovedVoucher")
+  payments        Payment[]
 
   @@index([storeId], name: "voucher_request_store_idx")
   @@index([status], name: "voucher_request_status_idx")

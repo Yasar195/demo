@@ -68,3 +68,7 @@ enum VoucherCategory {
   SERVICES
   OTHER
 }
+
+enum PaymentPurpose {
+  VOUCHER
+}

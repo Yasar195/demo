@@ -3,6 +3,8 @@ import { PaymentsService } from './payments.service';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { BaseResponseDto } from '../../common/dto/base-response.dto';
 import { JwtAuthGuard } from 'src/iam/auth/guards/jwt-auth.guard';
+import { CurrentUser } from 'src/common/decorators';
+import { User } from '@prisma/client';
 
 @Controller('payments')
 @UseGuards(JwtAuthGuard)
@@ -10,8 +12,8 @@ export class PaymentsController {
     constructor(private readonly paymentsService: PaymentsService) { }
 
     @Post('intent')
-    async createIntent(@Body() dto: CreatePaymentIntentDto) {
-        const intent = await this.paymentsService.createPaymentIntent(dto);
+    async createIntent(@CurrentUser() user: User, @Body() dto: CreatePaymentIntentDto) {
+        const intent = await this.paymentsService.createPaymentIntent(dto, user.id);
         return BaseResponseDto.success(intent, 'Payment intent created successfully');
     }
 
