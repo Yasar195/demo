@@ -24,13 +24,13 @@ export class VoucherRequestController {
     constructor(private readonly vouchersService: VouchersService) { }
 
 
-    @Get()
+    @Get('/vouchers')
     async findAll(@Query() pagination: PaginationDto) {
         const result = await this.vouchersService.findAllPaginated(pagination);
         return BaseResponseDto.success(result, 'Vouchers retrieved successfully');
     }
 
-    @Get(':id')
+    @Get('/vouchers/:id')
     async findOne(@Param('id') id: string) {
         const voucher = await this.vouchersService.findById(id);
         if (!voucher) {
@@ -39,19 +39,19 @@ export class VoucherRequestController {
         return BaseResponseDto.success(voucher, 'Voucher retrieved successfully');
     }
 
-    @Post()
+    @Post('/vouchers')
     async create(@Body() dto: CreateVoucherDto) {
         const voucher = await this.vouchersService.createVoucher(dto);
         return BaseResponseDto.success(voucher, 'Voucher created successfully');
     }
 
-    @Put(':id')
+    @Put('/vouchers/:id')
     async update(@Param('id') id: string, @Body() dto: UpdateVoucherDto) {
         const voucher = await this.vouchersService.updateVoucher(id, dto);
         return BaseResponseDto.success(voucher, 'Voucher updated successfully');
     }
 
-    @Delete(':id')
+    @Delete('/vouchers/:id')
     async remove(@Param('id') id: string) {
         await this.vouchersService.deleteVoucher(id);
         return BaseResponseDto.success(null, 'Voucher deleted successfully');
