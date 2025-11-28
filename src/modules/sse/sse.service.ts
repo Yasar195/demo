@@ -2,15 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Subject, Observable, interval } from 'rxjs';
 import { filter, map } from 'rxjs/operators';
 import { UserRole } from '@prisma/client';
-import { SSEEvent, SSEEventType, SSEClient } from './types/sse-event.types';
+import { SSEEvent, SSEEventType, SSEClient, MessageEvent } from './types/sse-event.types';
 import { v4 as uuidv4 } from 'uuid';
-
-interface MessageEvent {
-    data: string | object;
-    id?: string;
-    type?: string;
-    retry?: number;
-}
 
 @Injectable()
 export class SseService {

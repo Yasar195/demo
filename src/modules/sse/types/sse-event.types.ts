@@ -25,3 +25,11 @@ export interface SSEClient {
     role: UserRole;
     lastActivity: number;
 }
+
+export interface MessageEvent {
+    data: string | object;
+    id?: string;
+    type?: string;
+    retry?: number;
+}
+
