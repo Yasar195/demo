@@ -9,11 +9,12 @@ import {
 } from '@nestjs/common';
 import { StoreRequestRepository, StoreRepository } from './repositories';
 import { StoreRequest, Store } from './entities';
-import { CreateStoreRequestDto, UpdateStoreRequestDto, ApproveStoreRequestDto, RejectStoreRequestDto, QueryStoreRequestDto } from './dto';
-import { StoreRequestStatus, UserRole } from '@prisma/client';
+import { CreateStoreRequestDto, UpdateStoreRequestDto, ApproveStoreRequestDto, RejectStoreRequestDto, QueryStoreRequestDto, VendorDashboardStatsDto, VoucherStatsDto, RevenueStatsDto, StoreInfoDto } from './dto';
+import { StoreRequestStatus, UserRole, PaymentStatus, VoucherRequestStatus } from '@prisma/client';
 import { UsersRepository } from '../users/repositories';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PaginationDto } from 'src/common/dto';
+import { PrismaService } from '../../database/prisma.service';
 
 @Injectable()
 export class StoreService {
@@ -23,7 +24,8 @@ export class StoreService {
         private readonly storeRequestRepository: StoreRequestRepository,
         private readonly storeRepository: StoreRepository,
         private readonly userRepository: UsersRepository,
-        private readonly notificationService: NotificationsService
+        private readonly notificationService: NotificationsService,
+        private readonly prisma: PrismaService
     ) { }
 
     /**
@@ -341,6 +343,200 @@ export class StoreService {
         } catch (error) {
             this.handleError('getUserStore', error);
         }
+    }
+
+    /**
+     * Get vendor dashboard statistics
+     */
+    async getVendorDashboardStats(userId: string): Promise<VendorDashboardStatsDto> {
+        try {
+            // Get the vendor's store
+            const store = await this.storeRepository.findByOwnerId(userId);
+            if (!store) {
+                throw new NotFoundException('You do not have a store yet');
+            }
+
+            // Fetch all stats in parallel
+            const [storeInfo, voucherStats, revenueStats, pendingVoucherRequests] = await Promise.all([
+                this.getStoreInfo(store.id),
+                this.getVoucherStats(store.id),
+                this.getRevenueStats(store.id),
+                this.getPendingVoucherRequests(store.id),
+            ]);
+
+            return {
+                store: storeInfo,
+                voucherStats,
+                revenueStats,
+                pendingVoucherRequests,
+            };
+        } catch (error) {
+            this.handleError('getVendorDashboardStats', error);
+        }
+    }
+
+    /**
+     * Get store information
+     */
+    private async getStoreInfo(storeId: string): Promise<StoreInfoDto> {
+        const store = await this.prisma.store.findUnique({
+            where: { id: storeId },
+            include: {
+                locations: {
+                    where: { deletedAt: null },
+                },
+            },
+        });
+
+        if (!store) {
+            throw new NotFoundException('Store not found');
+        }
+
+        const activeLocations = store.locations.filter((loc) => loc.isActive).length;
+
+        return {
+            storeId: store.id,
+            storeName: store.name,
+            storeDescription: store.description,
+            storeLogo: store.logo,
+            totalLocations: store.locations.length,
+            activeLocations,
+        };
+    }
+
+    /**
+     * Get voucher statistics for a store
+     */
+    private async getVoucherStats(storeId: string): Promise<VoucherStatsDto> {
+        const now = new Date();
+
+        const [totalVouchers, activeVouchers, expiredVouchers, vouchersSold, totalQuantityData] =
+            await Promise.all([
+                // Total vouchers
+                this.prisma.voucher.count({
+                    where: {
+                        storeId,
+                        deletedAt: null,
+                    },
+                }),
+                // Active vouchers (not expired and active)
+                this.prisma.voucher.count({
+                    where: {
+                        storeId,
+                        deletedAt: null,
+                        isActive: true,
+                        expiresAt: {
+                            gt: now,
+                        },
+                    },
+                }),
+                // Expired vouchers
+                this.prisma.voucher.count({
+                    where: {
+                        storeId,
+                        deletedAt: null,
+                        expiresAt: {
+                            lte: now,
+                        },
+                    },
+                }),
+                // Count of vouchers sold (based on completed payments)
+                this.prisma.payment.count({
+                    where: {
+                        voucher: {
+                            storeId,
+                        },
+                        status: PaymentStatus.COMPLETED,
+                        deletedAt: null,
+                    },
+                }),
+                // Sum of available quantities
+                this.prisma.voucher.aggregate({
+                    where: {
+                        storeId,
+                        deletedAt: null,
+                        isActive: true,
+                    },
+                    _sum: {
+                        quantityAvailable: true,
+                    },
+                }),
+            ]);
+
+        return {
+            totalVouchers,
+            activeVouchers,
+            expiredVouchers,
+            vouchersSold,
+            totalQuantityAvailable: totalQuantityData._sum.quantityAvailable || 0,
+        };
+    }
+
+    /**
+     * Get revenue statistics for a store
+     */
+    private async getRevenueStats(storeId: string): Promise<RevenueStatsDto> {
+        const [totalRevenue, completedRevenue, pendingRevenue] = await Promise.all([
+            // Total revenue (all completed payments)
+            this.prisma.payment.aggregate({
+                where: {
+                    voucher: {
+                        storeId,
+                    },
+                    status: PaymentStatus.COMPLETED,
+                    deletedAt: null,
+                },
+                _sum: {
+                    amount: true,
+                },
+            }),
+            // Completed revenue (redundant but keeping for clarity)
+            this.prisma.payment.aggregate({
+                where: {
+                    voucher: {
+                        storeId,
+                    },
+                    status: PaymentStatus.COMPLETED,
+                    deletedAt: null,
+                },
+                _sum: {
+                    amount: true,
+                },
+            }),
+            // Pending revenue
+            this.prisma.payment.aggregate({
+                where: {
+                    voucher: {
+                        storeId,
+                    },
+                    status: PaymentStatus.PENDING,
+                    deletedAt: null,
+                },
+                _sum: {
+                    amount: true,
+                },
+            }),
+        ]);
+
+        return {
+            totalRevenue: totalRevenue._sum.amount || 0,
+            completedRevenue: completedRevenue._sum.amount || 0,
+            pendingRevenue: pendingRevenue._sum.amount || 0,
+            currency: 'INR',
+        };
+    }
+
+    /**
+     * Get count of pending voucher requests
+     */
+    private async getPendingVoucherRequests(storeId: string): Promise<number> {
+        return this.prisma.voucherRequest.count({
+            where: {
+                storeId,
+                status: VoucherRequestStatus.PENDING,
+                deletedAt: null,
+            },
+        });
     }
 
     private handleError(context: string, error: unknown): never {

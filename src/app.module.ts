@@ -18,6 +18,7 @@ import { UploadsModule } from './modules/uploads/uploads.module';
 import { StoreModule } from './modules/store/store.module';
 import { SseModule } from './modules/sse/sse.module';
 import { QrCodeModule } from './common/qrcode/qrcode.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { QrCodeModule } from './common/qrcode/qrcode.module';
     UploadsModule,
     StoreModule,
     SseModule,
+    AdminModule,
     IamModule,
   ],
   controllers: [AppController],

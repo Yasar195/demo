@@ -16,6 +16,7 @@ import {
     ApproveStoreRequestDto,
     RejectStoreRequestDto,
     QueryStoreRequestDto,
+    VendorDashboardStatsDto,
 } from './dto';
 import { JwtAuthGuard } from '../../iam/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -59,6 +60,15 @@ export class StoreController {
     async getUserStore(@CurrentUser() user: User) {
         const store = await this.storeService.getUserStore(user.id);
         return BaseResponseDto.success(store, 'Store retrieved successfully');
+    }
+
+    /**
+     * Get vendor dashboard statistics
+     */
+    @Get('my-store/dashboard')
+    async getVendorDashboard(@CurrentUser() user: User): Promise<BaseResponseDto<VendorDashboardStatsDto>> {
+        const stats = await this.storeService.getVendorDashboardStats(user.id);
+        return BaseResponseDto.success(stats, 'Vendor dashboard statistics retrieved successfully');
     }
 
     /**
