@@ -1,0 +1,25 @@
+// User model
+model User {
+  id         String    @id @default(uuid())
+  email      String    @unique
+  name       String
+  password   String?
+  provider   String    @default("local")
+  providerId String?   @unique
+  avatarUrl  String?
+  lastLogin  DateTime?
+  role       UserRole  @default(USER)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  notification            NotificationRecipient[]
+  storeRequests           StoreRequest[]          @relation("UserStoreRequests")
+  reviewedRequests        StoreRequest[]          @relation("AdminReviews")
+  ownedStore              Store?                  @relation("StoreOwner")
+  deviceTokens            DeviceToken[]
+  reviewedVoucherRequests VoucherRequest[]        @relation("AdminVoucherReviews")
+  payments                Payment[]               @relation("UserPayments")
+
+  @@map("users")
+}

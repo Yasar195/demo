@@ -1,0 +1,93 @@
+// Voucher related models
+model Voucher {
+  id        String  @id @default(uuid())
+  storeId   String  @map("store_id")
+  requestId String? @unique @map("request_id")
+
+  // Core voucher information
+  code         String  @unique
+  name         String
+  description  String? // Small description
+  faceValue    Float   @map("face_value") // e.g., 100$
+  sellingPrice Float   @map("selling_price") // e.g., 40$
+  discount     Float // Auto-calculated or set
+
+  // Availability
+  quantityTotal     Int @map("quantity_total") // Total quantity
+  quantityAvailable Int @map("quantity_available") // Available quantity
+
+  // Validity
+  expiresAt DateTime @map("expires_at")
+
+  // Business rules
+  redemptionRules String?         @map("redemption_rules") // One text line
+  category        VoucherCategory @default(OTHER)
+
+  // Visual/UI
+  image          String? // Image URL
+  highlightColor String? @map("highlight_color") // Hex color code
+  status         String? // e.g., "HOT DEAL", "LIMITED", "NEW"
+
+  // Legacy/Additional fields
+  giftCardId String? @map("gift_card_id")
+  isVerified Boolean @default(false) @map("is_verified")
+  isActive   Boolean @default(true) @map("is_active")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  store    Store           @relation("StoreVouchers", fields: [storeId], references: [id])
+  request  VoucherRequest? @relation("ApprovedVoucher", fields: [requestId], references: [id])
+  payments Payment[]       @relation("VoucherPayments")
+
+  @@index([storeId], name: "voucher_store_idx")
+  @@index([category], name: "voucher_category_idx")
+  @@index([isActive], name: "voucher_active_idx")
+  @@map("vouchers")
+}
+
+model VoucherRequest {
+  id      String @id @default(uuid())
+  storeId String @map("store_id")
+
+  // Voucher information
+  voucherName        String          @map("voucher_name")
+  voucherDescription String?         @map("voucher_description")
+  voucherFaceValue   Float           @map("voucher_face_value")
+  voucherPrice       Float           @map("voucher_price")
+  voucherCode        String          @map("voucher_code")
+  quantityTotal      Int             @map("quantity_total")
+  expiresAt          DateTime        @map("expires_at")
+  redemptionRules    String?         @map("redemption_rules")
+  category           VoucherCategory @default(OTHER)
+  image              String? // Image URL
+  highlightColor     String?         @map("highlight_color")
+
+  // Additional details
+  additionalNotes String? @map("additional_notes")
+
+  // Request status
+  status VoucherRequestStatus @default(PENDING)
+
+  // Admin review
+  reviewedById  String?   @map("reviewed_by_id")
+  reviewedAt    DateTime? @map("reviewed_at")
+  adminComments String?   @map("admin_comments")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime?
+
+  // Relations
+  store           Store    @relation("StoreVoucherRequests", fields: [storeId], references: [id])
+  reviewedBy      User?    @relation("AdminVoucherReviews", fields: [reviewedById], references: [id])
+  approvedVoucher Voucher? @relation("ApprovedVoucher")
+
+  @@index([storeId], name: "voucher_request_store_idx")
+  @@index([status], name: "voucher_request_status_idx")
+  @@index([reviewedById], name: "voucher_request_reviewed_by_idx")
+  @@index([category], name: "voucher_request_category_idx")
+  @@map("voucher_requests")
+}

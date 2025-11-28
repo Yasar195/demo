@@ -1,0 +1,19 @@
+// Device token model
+model DeviceToken {
+  id        String         @id @default(uuid())
+  userId    String         @map("user_id")
+  token     String         @unique
+  platform  DevicePlatform
+  deviceId  String?        @map("device_id")
+  isActive  Boolean        @default(true) @map("is_active")
+  lastUsed  DateTime       @default(now()) @map("last_used")
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+  deletedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], name: "device_token_user_idx")
+  @@index([token], name: "device_token_idx")
+  @@map("device_tokens")
+}

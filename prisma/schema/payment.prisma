@@ -1,0 +1,40 @@
+// Payment model
+model Payment {
+  id        String  @id @default(uuid())
+  userId    String  @map("user_id")
+  voucherId String? @map("voucher_id") // Nullable for now, but will be linked when user buys vouchers
+
+  // Transaction details
+  amount        Float         @map("amount") // Amount paid
+  currency      String        @default("INR") // Currency code
+  paymentMethod PaymentMethod @map("payment_method")
+  status        PaymentStatus @default(PENDING)
+
+  // Payment gateway details
+  transactionId   String? @unique @map("transaction_id") // Payment gateway transaction ID
+  paymentGateway  String? @map("payment_gateway") // e.g., "Razorpay", "Stripe"
+  gatewayResponse Json?   @map("gateway_response") // Store raw gateway response for debugging
+
+  // Additional metadata
+  metadata      Json? // Store any additional payment-related data
+  failureReason String?   @map("failure_reason") // If payment failed, store reason
+  refundAmount  Float?    @map("refund_amount") // For partial/full refunds
+  refundedAt    DateTime? @map("refunded_at")
+
+  // Timestamps
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  completedAt DateTime? @map("completed_at") // When payment was successfully completed
+  deletedAt   DateTime?
+
+  // Relations
+  user    User     @relation("UserPayments", fields: [userId], references: [id])
+  voucher Voucher? @relation("VoucherPayments", fields: [voucherId], references: [id])
+
+  @@index([userId], name: "payment_user_idx")
+  @@index([voucherId], name: "payment_voucher_idx")
+  @@index([status], name: "payment_status_idx")
+  @@index([transactionId], name: "payment_transaction_idx")
+  @@index([createdAt], name: "payment_created_at_idx")
+  @@map("payments")
+}

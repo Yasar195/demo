@@ -1,0 +1,12 @@
+// Gift card model
+model GiftCard {
+  id        String    @id @default(uuid())
+  code      String    @unique
+  balance   Float
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("gift_cards")
+}

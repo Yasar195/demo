@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum StoreRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum DevicePlatform {
+  IOS
+  ANDROID
+  WEB
+}
+
+enum VoucherRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  UPI
+  NET_BANKING
+  WALLET
+  CASH
+  OTHER
+}
+
+enum VoucherCategory {
+  FASHION
+  FURNITURE
+  ELECTRONICS
+  GROCERIES
+  FOOD_BEVERAGE
+  HEALTH_BEAUTY
+  SPORTS_FITNESS
+  HOME_GARDEN
+  ENTERTAINMENT
+  TRAVEL
+  AUTOMOTIVE
+  SERVICES
+  OTHER
+}
