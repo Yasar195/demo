@@ -101,24 +101,26 @@ model UserPurchasedVoucher {
   voucherId String @map("voucher_id")
   paymentId String @unique @map("payment_id")
 
-  // Unique instance code for this purchased voucher
-  instanceCode String @unique @map("instance_code") // e.g., "VCH-ABC123XYZ"
+  // Unique instance code for this purchased voucher (represents the batch)
+  instanceCode String @unique @map("instance_code")
 
-  // Purchase details (captured at time of purchase)
+  // Purchase details
+  quantity          Int   @default(1)
+  quantityUsed      Int   @default(0) @map("quantity_used")
   purchasePrice     Float @map("purchase_price")
   purchaseFaceValue Float @map("purchase_face_value")
   purchaseDiscount  Float @map("purchase_discount")
 
   // Validity
-  expiresAt DateTime @map("expires_at") // Copied from Voucher at purchase time
+  expiresAt DateTime @map("expires_at")
 
   // Redemption tracking
   status       VoucherRedemptionStatus @default(UNUSED)
-  redeemedAt   DateTime?               @map("redeemed_at")
-  redeemedWith String?                 @map("redeemed_with") // Store ID or location where redeemed
+  redeemedAt   DateTime?               @map("redeemed_at") // Last redemption time
+  redeemedWith String?                 @map("redeemed_with")
 
   // Additional metadata
-  notes String? // Any special notes or instructions
+  notes String?
 
   // Timestamps
   createdAt DateTime  @default(now()) @map("created_at")
@@ -141,8 +143,9 @@ model UserPurchasedVoucher {
 // Enum for voucher redemption status
 enum VoucherRedemptionStatus {
   UNUSED // Purchased but not yet redeemed
-  USED // Successfully redeemed
-  EXPIRED // Passed expiration date without use
-  REFUNDED // Payment refunded, voucher invalidated
-  CANCELLED // Cancelled by user or admin
+  PARTIALLY_USED // Some quantity used, but not all
+  USED // All quantity successfully redeemed
+  EXPIRED // Passed expiration date
+  REFUNDED // Payment refunded
+  CANCELLED // Cancelled
 }

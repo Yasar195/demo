@@ -8,6 +8,8 @@ export class Order implements PrismaUserPurchasedVoucher {
     instanceCode: string;
 
     // Purchase details
+    quantity: number;
+    quantityUsed: number;
     purchasePrice: number;
     purchaseFaceValue: number;
     purchaseDiscount: number;
