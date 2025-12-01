@@ -29,10 +29,11 @@ model Payment {
   deletedAt   DateTime?
 
   // Relations
-  user             User            @relation("UserPayments", fields: [userId], references: [id])
-  voucher          Voucher?        @relation("VoucherPayments", fields: [voucherId], references: [id])
-  voucherRequest   VoucherRequest? @relation(fields: [voucherRequestId], references: [id])
-  voucherRequestId String?
+  user                     User                  @relation("UserPayments", fields: [userId], references: [id])
+  voucher                  Voucher?              @relation("VoucherPayments", fields: [voucherId], references: [id])
+  voucherRequest           VoucherRequest?       @relation(fields: [voucherRequestId], references: [id])
+  voucherRequestId         String?
+  purchasedVoucherInstance UserPurchasedVoucher? @relation("PaymentVoucherInstance")
 
   @@index([userId], name: "payment_user_idx")
   @@index([voucherId], name: "payment_voucher_idx")

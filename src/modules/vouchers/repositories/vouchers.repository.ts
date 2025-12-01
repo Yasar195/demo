@@ -104,4 +104,41 @@ export class VouchersRepository extends PrismaRepository<Voucher> {
 
         return result;
     }
+
+    /**
+     * Find vouchers ordered by sales velocity (selling fast)
+     * Uses database sorting for better performance
+     */
+    async findWithSellingFastOrder(
+        page: number,
+        limit: number,
+        filters: any
+    ): Promise<{ data: Voucher[]; total: number; page: number; totalPages: number }> {
+        const where = { deletedAt: null, ...filters };
+
+        // Get total count first
+        const total = await this.model.count({ where });
+
+        // Use Prisma's raw query or orderBy with column math
+        // Order by (quantityTotal - quantityAvailable) DESC for most sold items
+        const data = await this.model.findMany({
+            where,
+            orderBy: [
+                // Vouchers with more sold items (quantityTotal - quantityAvailable) come first
+                // This is a simpler approach: sort by quantity sold
+                { quantityAvailable: 'asc' }, // Lower available = more sold
+            ],
+            skip: (page - 1) * limit,
+            take: limit,
+        }) as Voucher[];
+
+        const totalPages = Math.ceil(total / limit);
+
+        return {
+            data,
+            total,
+            page,
+            totalPages,
+        };
+    }
 }

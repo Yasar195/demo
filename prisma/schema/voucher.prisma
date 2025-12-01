@@ -38,9 +38,10 @@ model Voucher {
   deletedAt DateTime? @map("deleted_at")
 
   // Relations
-  store    Store           @relation("StoreVouchers", fields: [storeId], references: [id])
-  request  VoucherRequest? @relation("ApprovedVoucher", fields: [requestId], references: [id])
-  payments Payment[]       @relation("VoucherPayments")
+  store              Store                  @relation("StoreVouchers", fields: [storeId], references: [id])
+  request            VoucherRequest?        @relation("ApprovedVoucher", fields: [requestId], references: [id])
+  payments           Payment[]              @relation("VoucherPayments")
+  purchasedInstances UserPurchasedVoucher[] @relation("PurchasedInstances")
 
   @@index([storeId], name: "voucher_store_idx")
   @@index([category], name: "voucher_category_idx")
@@ -91,4 +92,57 @@ model VoucherRequest {
   @@index([reviewedById], name: "voucher_request_reviewed_by_idx")
   @@index([category], name: "voucher_request_category_idx")
   @@map("voucher_requests")
+}
+
+// Model to track individual voucher purchases by users
+model UserPurchasedVoucher {
+  id        String @id @default(uuid())
+  userId    String @map("user_id")
+  voucherId String @map("voucher_id")
+  paymentId String @unique @map("payment_id")
+
+  // Unique instance code for this purchased voucher
+  instanceCode String @unique @map("instance_code") // e.g., "VCH-ABC123XYZ"
+
+  // Purchase details (captured at time of purchase)
+  purchasePrice     Float @map("purchase_price")
+  purchaseFaceValue Float @map("purchase_face_value")
+  purchaseDiscount  Float @map("purchase_discount")
+
+  // Validity
+  expiresAt DateTime @map("expires_at") // Copied from Voucher at purchase time
+
+  // Redemption tracking
+  status       VoucherRedemptionStatus @default(UNUSED)
+  redeemedAt   DateTime?               @map("redeemed_at")
+  redeemedWith String?                 @map("redeemed_with") // Store ID or location where redeemed
+
+  // Additional metadata
+  notes String? // Any special notes or instructions
+
+  // Timestamps
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  user    User    @relation("UserVouchers", fields: [userId], references: [id])
+  voucher Voucher @relation("PurchasedInstances", fields: [voucherId], references: [id])
+  payment Payment @relation("PaymentVoucherInstance", fields: [paymentId], references: [id])
+
+  @@index([userId], name: "user_voucher_user_idx")
+  @@index([voucherId], name: "user_voucher_voucher_idx")
+  @@index([status], name: "user_voucher_status_idx")
+  @@index([expiresAt], name: "user_voucher_expires_idx")
+  @@index([instanceCode], name: "user_voucher_code_idx")
+  @@map("user_purchased_vouchers")
+}
+
+// Enum for voucher redemption status
+enum VoucherRedemptionStatus {
+  UNUSED // Purchased but not yet redeemed
+  USED // Successfully redeemed
+  EXPIRED // Passed expiration date without use
+  REFUNDED // Payment refunded, voucher invalidated
+  CANCELLED // Cancelled by user or admin
 }

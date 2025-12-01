@@ -1,0 +1,25 @@
+import { UserPurchasedVoucher as PrismaUserPurchasedVoucher, VoucherRedemptionStatus } from '@prisma/client';
+
+export class Order implements PrismaUserPurchasedVoucher {
+    id: string;
+    userId: string;
+    voucherId: string;
+    paymentId: string;
+    instanceCode: string;
+
+    // Purchase details
+    purchasePrice: number;
+    purchaseFaceValue: number;
+    purchaseDiscount: number;
+
+    // Status & expiry
+    expiresAt: Date;
+    status: VoucherRedemptionStatus;
+    redeemedAt: Date | null;
+    redeemedWith: string | null;
+
+    notes: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    deletedAt: Date | null;
+}

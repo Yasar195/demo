@@ -6,6 +6,7 @@ import {
     CreateVoucherRequestDto,
     UpdateVoucherRequestDto,
     QueryVoucherRequestDto,
+    QueryVoucherDto,
     ApproveVoucherRequestDto,
     RejectVoucherRequestDto
 } from './dto';
@@ -25,8 +26,8 @@ export class VoucherRequestController {
 
 
     @Get('/vouchers')
-    async findAll(@Query() pagination: PaginationDto) {
-        const result = await this.vouchersService.findAllPaginated(pagination);
+    async findAll(@Query() query: QueryVoucherDto) {
+        const result = await this.vouchersService.findAllPaginated(query);
         return BaseResponseDto.success(result, 'Vouchers retrieved successfully');
     }
 

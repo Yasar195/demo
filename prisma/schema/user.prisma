@@ -21,6 +21,7 @@ model User {
   deviceTokens            DeviceToken[]
   reviewedVoucherRequests VoucherRequest[]        @relation("AdminVoucherReviews")
   payments                Payment[]               @relation("UserPayments")
+  purchasedVouchers       UserPurchasedVoucher[]  @relation("UserVouchers")
 
   @@map("users")
 }

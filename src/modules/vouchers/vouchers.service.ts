@@ -4,7 +4,7 @@ import { VouchersRepository } from './repositories/vouchers.repository';
 import { VoucherRequestRepository } from './repositories/voucher-request.repository';
 import { Voucher } from './entities/voucher.entity';
 import { VoucherRequest } from './entities/voucher-request.entity';
-import { CreateVoucherDto, UpdateVoucherDto, CreateVoucherRequestDto, UpdateVoucherRequestDto, QueryVoucherRequestDto, ApproveVoucherRequestDto, RejectVoucherRequestDto } from './dto';
+import { CreateVoucherDto, UpdateVoucherDto, CreateVoucherRequestDto, UpdateVoucherRequestDto, QueryVoucherRequestDto, ApproveVoucherRequestDto, RejectVoucherRequestDto, QueryVoucherDto, VoucherOrderBy } from './dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { UserRole, VoucherRequestStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -30,30 +30,52 @@ export class VouchersService extends BaseService<Voucher> {
     /**
      * Find all vouchers with pagination and sorting
      */
-    async findAllPaginated(pagination?: PaginationDto): Promise<{ data: Voucher[]; total: number; page: number; totalPages: number }> {
+    async findAllPaginated(query?: QueryVoucherDto): Promise<{ data: Voucher[]; total: number; page: number; totalPages: number }> {
         try {
-            const page = pagination?.page ?? 1;
-            const limit = pagination?.limit ?? 10;
-            const sortBy = pagination?.sortBy;
-            const sortOrder: 'asc' | 'desc' = pagination?.sortOrder?.toLowerCase() === 'desc' ? 'desc' : 'asc';
+            const page = query?.page ?? 1;
+            const limit = query?.limit ?? 10;
+            const orderBy = query?.orderBy ?? VoucherOrderBy.NEWEST;
+            const activeOnly = query?.activeOnly ?? false;
+            const category = query?.category;
 
-            const allowedSortFields = ['createdAt', 'updatedAt', 'code', 'discount', 'expiresAt', 'isVerified', 'faceValue', 'sellingPrice', 'category', 'isActive'] as const;
-            type SortField = typeof allowedSortFields[number];
+            // Build filters
+            const filters: any = {};
+            if (activeOnly) {
+                filters.isActive = true;
+                filters.expiresAt = { gt: new Date() };
+            }
+            if (category) {
+                filters.category = category;
+            }
 
-            const resolvedSortBy: SortField = allowedSortFields.includes(sortBy as SortField)
-                ? sortBy as SortField
-                : 'createdAt';
+            // Handle ordering based on the orderBy enum
+            switch (orderBy) {
+                case VoucherOrderBy.LOWEST_QUANTITY:
+                    return await this.vouchersRepository.findWithPagination(page, limit, filters, { quantityAvailable: 'asc' });
 
-            const orderBy: Record<string, 'asc' | 'desc'> = {
-                [resolvedSortBy]: sortBy ? sortOrder : 'desc',
-            };
+                case VoucherOrderBy.EXPIRING_SOON:
+                    return await this.vouchersRepository.findWithPagination(page, limit, filters, { expiresAt: 'asc' });
 
-            return await this.vouchersRepository.findWithPagination(page, limit, {}, orderBy);
+                case VoucherOrderBy.HIGHEST_DISCOUNT:
+                    return await this.vouchersRepository.findWithPagination(page, limit, filters, { discount: 'desc' });
+
+                case VoucherOrderBy.LOWEST_PRICE:
+                    return await this.vouchersRepository.findWithPagination(page, limit, filters, { sellingPrice: 'asc' });
+
+                case VoucherOrderBy.OLDEST:
+                    return await this.vouchersRepository.findWithPagination(page, limit, filters, { createdAt: 'asc' });
+
+                case VoucherOrderBy.SELLING_FAST:
+                    return await this.vouchersRepository.findWithSellingFastOrder(page, limit, filters);
+
+                case VoucherOrderBy.NEWEST:
+                default:
+                    return await this.vouchersRepository.findWithPagination(page, limit, filters, { createdAt: 'desc' });
+            }
         } catch (error) {
             this.handleError('findAllPaginated', error);
         }
     }
-
     /**
      * Create a new voucher
      */
