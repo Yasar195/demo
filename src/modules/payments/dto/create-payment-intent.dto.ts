@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, IsObject, Min, Matches, MaxLength } from 'class-validator';
+import { IsInt, IsOptional, IsString, IsObject, Min, Matches, MaxLength, IsEnum } from 'class-validator';
+import { PaymentPurpose } from '@prisma/client';
 
 export class CreatePaymentIntentDto {
     @Type(() => Number)
@@ -20,8 +21,8 @@ export class CreatePaymentIntentDto {
     @IsObject()
     metadata?: Record<string, string>;
 
-    @IsString()
-    purpose: 'VOUCHER';
+    @IsEnum(PaymentPurpose)
+    purpose: PaymentPurpose;
 
     @IsString()
     targetId: string;

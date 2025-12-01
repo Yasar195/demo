@@ -51,7 +51,7 @@ export class PaymentsService {
                 amount: dto.amount,
                 currency: dto.currency,
                 status: 'PENDING',
-                purpose: dto.purpose as any,
+                purpose: dto.purpose,
                 transactionId: paymentIntent.id,
                 paymentGateway: 'STRIPE',
                 paymentMethod: dto.paymentMethod as any,
