@@ -37,6 +37,7 @@ export class VouchersService extends BaseService<Voucher> {
             const orderBy = query?.orderBy ?? VoucherOrderBy.NEWEST;
             const activeOnly = query?.activeOnly ?? false;
             const category = query?.category;
+            const storeId = query?.storeId;
 
             // Build filters
             const filters: any = {};
@@ -46,6 +47,9 @@ export class VouchersService extends BaseService<Voucher> {
             }
             if (category) {
                 filters.category = category;
+            }
+            if (storeId) {
+                filters.storeId = storeId;
             }
 
             // Handle ordering based on the orderBy enum

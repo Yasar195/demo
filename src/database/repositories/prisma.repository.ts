@@ -121,11 +121,11 @@ export abstract class PrismaRepository<T> extends BaseRepository<T> {
         page: number = 1,
         limit: number = 10,
         where: any = {},
-        orderBy?: Record<string, 'asc' | 'desc'>,
+        orderBy?: any, // Changed from Record<string, 'asc' | 'desc'> to support nested orderBy
         include?: Record<string, boolean | { select?: any; where?: any; include?: any }>,
     ): Promise<{ data: T[]; total: number; page: number; totalPages: number }> {
         const skip = (page - 1) * limit;
-        
+
         const queryOptions: any = {
             where: { ...where, deletedAt: null },
             skip,

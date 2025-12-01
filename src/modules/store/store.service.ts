@@ -456,6 +456,52 @@ export class StoreService {
         return this.voucherRequestRepository.countPendingByStoreId(storeId);
     }
 
+    /**
+     * Get trending stores with pagination
+     * Sorted by total revenue and sales volume
+     */
+    async getTrendingStores(pagination: PaginationDto): Promise<{
+        data: any[];
+        total: number;
+        page: number;
+        totalPages: number;
+    }> {
+        try {
+            const page = pagination?.page ?? 1;
+            const limit = pagination?.limit ?? 10;
+
+            const orderBy = {
+                vouchers: {
+                    _count: 'desc' as const,
+                },
+            };
+
+            const include = {
+                owner: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                _count: {
+                    select: {
+                        vouchers: {
+                            where: {
+                                deletedAt: null,
+                                isActive: true,
+                            },
+                        },
+                    },
+                },
+            };
+
+            return await this.storeRepository.findWithPagination(page, limit, {}, orderBy, include);
+
+        } catch (error) {
+            this.handleError('getTrendingStores', error);
+        }
+    }
+
     private handleError(context: string, error: unknown): never {
         this.logger.error(`StoreService.${context} failed`, error as Error);
         if (error instanceof HttpException) {

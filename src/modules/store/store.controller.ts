@@ -30,7 +30,18 @@ import { PaginationDto } from 'src/common/dto';
 @Controller('store-requests')
 @UseGuards(JwtAuthGuard)
 export class StoreController {
-    constructor(private readonly storeService: StoreService) {}
+    constructor(private readonly storeService: StoreService) { }
+
+    /**
+     * Get trending stores (Authenticated)
+     * Returns stores sorted by number of active vouchers
+     * IMPORTANT: This must be before :id route to avoid conflicts
+     */
+    @Get('stores/trending')
+    async getTrendingStores(@Query() pagination: PaginationDto) {
+        const stores = await this.storeService.getTrendingStores(pagination);
+        return BaseResponseDto.success(stores, 'Trending stores retrieved successfully');
+    }
 
     /**
      * Create a new store request (User)

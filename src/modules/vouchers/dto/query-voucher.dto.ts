@@ -23,6 +23,10 @@ export class QueryVoucherDto extends PaginationDto {
     category?: string;
 
     @IsOptional()
+    @IsString()
+    storeId?: string;
+
+    @IsOptional()
     @IsBoolean()
     @Type(() => Boolean)
     activeOnly?: boolean;
