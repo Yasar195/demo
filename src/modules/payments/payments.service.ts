@@ -39,6 +39,15 @@ export class PaymentsService {
 
     async createPaymentIntent(dto: CreatePaymentIntentDto, userId: string): Promise<PaymentIntentResult> {
         try {
+
+            if (dto.purpose === 'VOUCHER') {
+                const voucher = await this.paymentsRepository.findById(dto.targetId);
+
+                if (!voucher) {
+                    throw new Error('Voucher not found');
+                }
+            }
+
             const paymentIntent = await this.paymentAdapter.createPaymentIntent({
                 amount: dto.amount,
                 currency: dto.currency,
