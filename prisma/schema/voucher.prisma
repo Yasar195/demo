@@ -104,6 +104,9 @@ model UserPurchasedVoucher {
   // Unique instance code for this purchased voucher (represents the batch)
   instanceCode String @unique @map("instance_code")
 
+  // QR Code URL
+  qrCodeUrl String? @map("qr_code_url")
+
   // Purchase details
   quantity          Int   @default(1)
   quantityUsed      Int   @default(0) @map("quantity_used")

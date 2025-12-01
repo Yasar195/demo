@@ -6,6 +6,7 @@ export class Order implements PrismaUserPurchasedVoucher {
     voucherId: string;
     paymentId: string;
     instanceCode: string;
+    qrCodeUrl?: string;
 
     // Purchase details
     quantity: number;

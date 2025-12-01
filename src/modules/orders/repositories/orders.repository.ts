@@ -147,4 +147,14 @@ export class OrdersRepository extends PrismaRepository<Order> {
             return order as unknown as Order;
         });
     }
+
+    /**
+     * Update QR code URL for an order
+     */
+    async updateOrderQrCode(orderId: string, qrCodeUrl: string): Promise<void> {
+        await this.model.update({
+            where: { id: orderId },
+            data: { qrCodeUrl } as any, // Cast to any until schema is regenerated
+        });
+    }
 }

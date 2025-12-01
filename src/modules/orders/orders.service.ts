@@ -4,12 +4,15 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 import { Order } from './entities';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { PrismaService } from '../../database/prisma.service';
+import { S3Service } from '../../integrations/s3/s3.service';
+import * as QRCode from 'qrcode';
 
 @Injectable()
 export class OrdersService {
     constructor(
         private readonly ordersRepository: OrdersRepository,
         private readonly prisma: PrismaService,
+        private readonly s3Service: S3Service,
     ) { }
 
     /**
@@ -98,7 +101,7 @@ export class OrdersService {
 
         // 4. Execute purchase transaction
         try {
-            return await this.ordersRepository.createOrder(
+            const order = await this.ordersRepository.createOrder(
                 userId,
                 dto.voucherId,
                 dto.paymentId,
@@ -110,11 +113,50 @@ export class OrdersService {
                     expiresAt: voucher.expiresAt,
                 }
             );
+
+            // 5. Generate and upload QR code (Async, don't block response if possible, but here we await to return full object)
+            // Or we can fire and forget, but then the returned object won't have the URL.
+            // Let's await it for better UX.
+            try {
+                const qrCodeUrl = await this.generateAndUploadQR(order, userId);
+                await this.ordersRepository.updateOrderQrCode(order.id, qrCodeUrl);
+                order.qrCodeUrl = qrCodeUrl;
+            } catch (qrError) {
+                // Log error but don't fail the order
+                console.error('Failed to generate/upload QR code:', qrError);
+            }
+
+            return order;
         } catch (error) {
             if (error.message === 'OUT_OF_STOCK') {
                 throw new BadRequestException('Voucher is out of stock');
             }
             throw error;
         }
+    }
+
+    /**
+     * Generate QR code and upload to S3
+     */
+    private async generateAndUploadQR(order: Order, userId: string): Promise<string> {
+        const qrData = JSON.stringify({
+            orderId: order.id,
+            instanceCode: order.instanceCode,
+            userId,
+            voucherId: order.voucherId,
+            quantity: order.quantity,
+        });
+
+        const qrBuffer = await QRCode.toBuffer(qrData);
+        const fileName = `vouchers/qr-codes/${order.instanceCode}.png`;
+
+        // Upload to S3
+        const uploadResult = await this.s3Service.upload({
+            buffer: qrBuffer,
+            key: fileName,
+            contentType: 'image/png',
+        });
+
+        return uploadResult.url;
     }
 }
