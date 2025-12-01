@@ -24,4 +24,5 @@ export class Voucher implements PrismaVoucher {
     createdAt: Date;
     updatedAt: Date;
     deletedAt: Date | null;
+    reservedQuantity: number;
 }

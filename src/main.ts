@@ -30,11 +30,11 @@ function resolveLogLevels(): LogLevel[] {
 @Module({
   imports: [ConfigModule, VaultModule],
 })
-class VaultInitModule {}
+class VaultInitModule { }
 
 async function initializeVault(logger: Logger): Promise<void> {
-  // const context = await NestFactory.createApplicationContext(VaultInitModule, { logger: false });
-  const context = await NestFactory.createApplicationContext(VaultInitModule);
+  const context = await NestFactory.createApplicationContext(VaultInitModule, { logger: false });
+  // const context = await NestFactory.createApplicationContext(VaultInitModule);
   const vaultService = context.get(VaultService);
 
   if (!vaultService.isConfigured()) {
@@ -60,10 +60,10 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   await initializeVault(logger);
 
-  // const app = await NestFactory.create(AppModule, {
-  //   logger: resolveLogLevels(),
-  // });
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: resolveLogLevels(),
+  });
+  // const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
   configService.get('APP_PORT')

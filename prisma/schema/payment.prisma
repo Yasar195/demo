@@ -16,6 +16,10 @@ model Payment {
   paymentGateway  String? @map("payment_gateway") // e.g., "Razorpay", "Stripe"
   gatewayResponse Json?   @map("gateway_response") // Store raw gateway response for debugging
 
+  // Stock reservation (for voucher purchases)
+  quantityReserved     Int?      @map("quantity_reserved") // Quantity reserved for this payment
+  reservationExpiresAt DateTime? @map("reservation_expires_at") // When reservation expires
+
   // Additional metadata
   metadata      Json? // Store any additional payment-related data
   failureReason String?   @map("failure_reason") // If payment failed, store reason

@@ -15,6 +15,7 @@ model Voucher {
   // Availability
   quantityTotal     Int @map("quantity_total") // Total quantity
   quantityAvailable Int @map("quantity_available") // Available quantity
+  reservedQuantity  Int @default(0) @map("reserved_quantity") // Temporarily reserved during payment processing
 
   // Validity
   expiresAt DateTime @map("expires_at")

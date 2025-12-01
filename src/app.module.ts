@@ -22,6 +22,7 @@ import { SseModule } from './modules/sse/sse.module';
 import { QrCodeModule } from './common/qrcode/qrcode.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { SchedulerModule } from './modules/scheduler/scheduler.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { OrdersModule } from './modules/orders/orders.module';
     SseModule,
     AdminModule,
     OrdersModule,
+    SchedulerModule,
     IamModule,
   ],
   controllers: [AppController],

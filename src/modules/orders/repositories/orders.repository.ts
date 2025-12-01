@@ -101,17 +101,21 @@ export class OrdersRepository extends PrismaRepository<Order> {
         }
     ): Promise<Order> {
         return await this.prisma.$transaction(async (tx) => {
-            // 1. Atomic update to decrement quantity
-            // This prevents race conditions - if quantity is 0 or less than requested, this update will fail
+            // 1. Atomic update to decrement both available and reserved quantities
+            // For the voucher purchase flow:
+            // - quantityAvailable was not touched during payment intent (only reservedQuantity was incremented)
+            // - Now we need to decrement quantityAvailable (actual sale) and decrement reservedQuantity (release reservation)
             const updateResult = await tx.voucher.updateMany({
                 where: {
                     id: voucherId,
                     quantityAvailable: { gte: quantity }, // Must have enough stock
+                    reservedQuantity: { gte: quantity }, // Must have enough reserved
                     isActive: true,
                     deletedAt: null,
                 },
                 data: {
                     quantityAvailable: { decrement: quantity },
+                    reservedQuantity: { decrement: quantity }, // Release the reservation
                 },
             });
 

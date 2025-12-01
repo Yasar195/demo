@@ -114,4 +114,52 @@ export class PaymentsRepository extends PrismaRepository<Payment> {
             },
         });
     }
+
+    /**
+     * Find expired reservations that need to be released
+     */
+    async findExpiredReservations(): Promise<Payment[]> {
+        return this.model.findMany({
+            where: {
+                reservationExpiresAt: {
+                    lte: new Date()
+                },
+                status: {
+                    in: ['PENDING', 'PROCESSING']
+                },
+                quantityReserved: {
+                    gt: 0
+                },
+                voucherId: {
+                    not: null
+                },
+                deletedAt: null
+            }
+        });
+    }
+
+    /**
+     * Clear reservation fields for a payment
+     */
+    async clearReservation(paymentId: string): Promise<void> {
+        await this.model.update({
+            where: { id: paymentId },
+            data: {
+                quantityReserved: null,
+                reservationExpiresAt: null
+            }
+        });
+    }
+
+    /**
+     * Get payment by transaction ID with voucher details
+     */
+    async findByTransactionIdWithVoucher(transactionId: string): Promise<Payment | null> {
+        return this.model.findUnique({
+            where: { transactionId },
+            include: {
+                voucher: true
+            }
+        });
+    }
 }

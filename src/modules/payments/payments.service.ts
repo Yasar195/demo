@@ -3,6 +3,7 @@ import { PAYMENT_ADAPTER } from '../../integrations/payments/payment.constants';
 import { PaymentAdapter, PaymentIntentResult } from '../../integrations/payments/interfaces/payment-adapter.interface';
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { PaymentsRepository } from './repositories/payments.repository';
+import { VouchersRepository } from '../vouchers/repositories/vouchers.repository';
 
 @Injectable()
 export class PaymentsService {
@@ -11,6 +12,7 @@ export class PaymentsService {
     constructor(
         @Inject(PAYMENT_ADAPTER) private readonly paymentAdapter: PaymentAdapter,
         private readonly paymentsRepository: PaymentsRepository,
+        private readonly vouchersRepository: VouchersRepository,
     ) { }
 
     async getPaymentIntentStatus(paymentIntentId: string): Promise<{ completed: boolean; status: string; raw: unknown }> {
@@ -30,6 +32,11 @@ export class PaymentsService {
 
             await this.paymentsRepository.updateStatusByTransactionId(paymentIntentId, dbStatus as any);
 
+            // Release reservation if payment failed or was cancelled
+            if (dbStatus === 'FAILED' || dbStatus === 'CANCELLED') {
+                await this.releasePaymentReservation(paymentIntentId);
+            }
+
             const completed = intent.status === 'succeeded';
             return { completed, status: intent.status, raw: intent.raw };
         } catch (error) {
@@ -39,36 +46,91 @@ export class PaymentsService {
 
     async createPaymentIntent(dto: CreatePaymentIntentDto, userId: string): Promise<PaymentIntentResult> {
         try {
+            const RESERVATION_TIMEOUT_MINUTES = 30;
 
+            // For voucher purchases, reserve stock first
             if (dto.purpose === 'VOUCHER') {
                 const voucher = await this.paymentsRepository.findById(dto.targetId);
 
                 if (!voucher) {
                     throw new Error('Voucher not found');
                 }
+
+                // Get quantity from metadata (default to 1 if not provided)
+                const quantity = typeof dto.metadata?.quantity === 'number'
+                    ? dto.metadata.quantity
+                    : parseInt(dto.metadata?.quantity as string, 10) || 1;
+
+                // Atomically reserve stock
+                const reserved = await this.vouchersRepository.reserveStock(dto.targetId, quantity);
+
+                if (!reserved) {
+                    throw new HttpException(
+                        {
+                            message: 'Payment intent creation failed',
+                            error: 'Voucher is out of stock or insufficient quantity available',
+                        },
+                        HttpStatus.BAD_REQUEST,
+                    );
+                }
+
+                // If reservation succeeded, create payment intent
+                try {
+                    const paymentIntent = await this.paymentAdapter.createPaymentIntent({
+                        amount: dto.amount,
+                        currency: dto.currency,
+                        description: dto.description,
+                        metadata: { ...dto.metadata, purpose: dto.purpose, targetId: dto.targetId, quantity: quantity.toString() },
+                    });
+
+                    // Calculate reservation expiry
+                    const reservationExpiresAt = new Date();
+                    reservationExpiresAt.setMinutes(reservationExpiresAt.getMinutes() + RESERVATION_TIMEOUT_MINUTES);
+
+                    await this.paymentsRepository.create({
+                        userId,
+                        amount: dto.amount,
+                        currency: dto.currency,
+                        status: 'PENDING',
+                        purpose: dto.purpose,
+                        transactionId: paymentIntent.id,
+                        paymentGateway: 'STRIPE',
+                        paymentMethod: dto.paymentMethod as any,
+                        metadata: dto.metadata as any,
+                        voucherId: dto.targetId,
+                        quantityReserved: quantity,
+                        reservationExpiresAt,
+                    } as any);
+
+                    return paymentIntent;
+                } catch (error) {
+                    // If payment intent creation fails, release the reservation
+                    await this.vouchersRepository.releaseReservation(dto.targetId, quantity);
+                    throw error;
+                }
+            } else {
+                // Non-voucher payments (no reservation needed)
+                const paymentIntent = await this.paymentAdapter.createPaymentIntent({
+                    amount: dto.amount,
+                    currency: dto.currency,
+                    description: dto.description,
+                    metadata: { ...dto.metadata, purpose: dto.purpose, targetId: dto.targetId },
+                });
+
+                await this.paymentsRepository.create({
+                    userId,
+                    amount: dto.amount,
+                    currency: dto.currency,
+                    status: 'PENDING',
+                    purpose: dto.purpose,
+                    transactionId: paymentIntent.id,
+                    paymentGateway: 'STRIPE',
+                    paymentMethod: dto.paymentMethod as any,
+                    metadata: dto.metadata as any,
+                } as any);
+
+                return paymentIntent;
             }
-
-            const paymentIntent = await this.paymentAdapter.createPaymentIntent({
-                amount: dto.amount,
-                currency: dto.currency,
-                description: dto.description,
-                metadata: { ...dto.metadata, purpose: dto.purpose, targetId: dto.targetId },
-            });
-
-            await this.paymentsRepository.create({
-                userId,
-                amount: dto.amount,
-                currency: dto.currency,
-                status: 'PENDING',
-                purpose: dto.purpose,
-                transactionId: paymentIntent.id,
-                paymentGateway: 'STRIPE',
-                paymentMethod: dto.paymentMethod as any,
-                metadata: dto.metadata as any,
-                ...(dto.purpose === 'VOUCHER' ? { voucherId: dto.targetId } : {}),
-            });
-
-            return paymentIntent;
         } catch (error) {
             this.handleError('createPaymentIntent', error);
         }
@@ -82,14 +144,38 @@ export class PaymentsService {
 
             const result = await this.paymentAdapter.cancelPaymentIntent(paymentIntentId);
 
-            // Sync status with database
+            // Sync status with database and release reservation
             if (result.status === 'canceled') {
                 await this.paymentsRepository.updateStatusByTransactionId(paymentIntentId, 'CANCELLED');
+                await this.releasePaymentReservation(paymentIntentId);
             }
 
             return result;
         } catch (error) {
             this.handleError('cancelPaymentIntent', error);
+        }
+    }
+
+    /**
+     * Release reservation for a payment (by transaction ID)
+     */
+    private async releasePaymentReservation(transactionId: string): Promise<void> {
+        try {
+            const payment = await this.paymentsRepository.findByTransactionIdWithVoucher(transactionId);
+
+            if (!payment || !payment.voucherId || !payment.quantityReserved) {
+                return; // No reservation to release
+            }
+
+            // Release the stock reservation
+            await this.vouchersRepository.releaseReservation(payment.voucherId, payment.quantityReserved);
+
+            // Clear reservation fields from payment
+            await this.paymentsRepository.clearReservation(payment.id);
+
+            this.logger.log(`Released reservation for payment ${payment.id}, voucher ${payment.voucherId}, quantity ${payment.quantityReserved}`);
+        } catch (error) {
+            this.logger.error('Failed to release payment reservation', error);
         }
     }
 

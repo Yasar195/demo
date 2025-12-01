@@ -141,4 +141,67 @@ export class VouchersRepository extends PrismaRepository<Voucher> {
             totalPages,
         };
     }
+
+    /**
+     * Atomically reserve stock for a voucher
+     * Returns true if reservation successful, false if insufficient stock
+     */
+    async reserveStock(voucherId: string, quantity: number): Promise<boolean> {
+        const result = await this.model.updateMany({
+            where: {
+                id: voucherId,
+                isActive: true,
+                deletedAt: null,
+                // Check that we have enough unreserved stock
+                // Available stock = quantityAvailable - reservedQuantity
+                quantityAvailable: {
+                    gte: {
+                        reservedQuantity: {
+                            plus: quantity
+                        }
+                    } as any
+                }
+            },
+            data: {
+                reservedQuantity: {
+                    increment: quantity
+                }
+            }
+        });
+
+        return result.count > 0;
+    }
+
+    /**
+     * Release a stock reservation
+     */
+    async releaseReservation(voucherId: string, quantity: number): Promise<void> {
+        await this.model.update({
+            where: { id: voucherId },
+            data: {
+                reservedQuantity: {
+                    decrement: quantity
+                }
+            }
+        });
+    }
+
+    /**
+     * Get actual available stock for a voucher (accounting for reservations)
+     */
+    async getAvailableStock(voucherId: string): Promise<number> {
+        const voucher = await this.model.findUnique({
+            where: { id: voucherId },
+            select: {
+                quantityAvailable: true,
+                reservedQuantity: true
+            }
+        });
+
+        if (!voucher) {
+            return 0;
+        }
+
+        return voucher.quantityAvailable - (voucher.reservedQuantity || 0);
+    }
 }
