@@ -22,14 +22,10 @@ export class FirebaseService implements OnModuleInit {
             const serviceAccountPath = this.configService.get<string>('FIREBASE_SERVICE_ACCOUNT');
             const projectId = this.configService.get<string>('FIREBASE_PROJECT_ID');
 
-            console.log(projectId)
-
             if (!serviceAccountPath && !projectId) {
                 this.logger.warn('Firebase credentials not configured. Push notifications will be disabled.');
                 return;
             }
-
-            console.log(serviceAccountPath)
 
             if (serviceAccountPath) {
                 try {
@@ -38,7 +34,6 @@ export class FirebaseService implements OnModuleInit {
                         : path.join(process.cwd(), serviceAccountPath);
 
                     const serviceAccount = require(absolutePath);
-                    console.log(serviceAccount)
                     this.firebaseApp = admin.initializeApp({
                         credential: admin.credential.cert(serviceAccount),
                     });
