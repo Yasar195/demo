@@ -23,6 +23,7 @@ import { QrCodeModule } from './common/qrcode/qrcode.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
+import { RedisModule } from './integrations/redis';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { SchedulerModule } from './modules/scheduler/scheduler.module';
     }]),
     ConfigModule,
     DatabaseModule,
+    RedisModule,
     FirebaseModule,
     S3Module,
     CommonModule,

@@ -16,8 +16,9 @@ export interface SSEEvent {
     type: SSEEventType;
     timestamp: number;
     data: any;
-    userId?: string;
-    role?: UserRole;
+    userId?: string; // Target specific user
+    role?: UserRole; // Target all users with specific role
+    instanceId?: string; // ID of the instance that created this event
 }
 
 export interface SSEClient {
