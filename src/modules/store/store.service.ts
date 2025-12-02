@@ -40,8 +40,8 @@ export class StoreService {
     async createStoreRequest(userId: string, dto: CreateStoreRequestDto): Promise<StoreRequest> {
         try {
             // Check if user already has a store
-            const hasStore = await this.storeRepository.hasStore(userId);
-            if (hasStore) {
+            const existingStore = await this.storeRepository.findOneByCondition({ ownerId: userId });
+            if (existingStore) {
                 throw new BadRequestException('You already have a store');
             }
 
@@ -250,8 +250,8 @@ export class StoreService {
             }
 
             // Check if user already has a store
-            const hasStore = await this.storeRepository.hasStore(request.userId);
-            if (hasStore) {
+            const existingStore = await this.storeRepository.findOneByCondition({ ownerId: request.userId });
+            if (existingStore) {
                 throw new BadRequestException('User already has a store');
             }
 
@@ -345,7 +345,7 @@ export class StoreService {
      */
     async getUserStore(userId: string): Promise<Store | null> {
         try {
-            return await this.storeRepository.findByOwnerId(userId);
+            return await this.storeRepository.findOneByCondition({ ownerId: userId });
         } catch (error) {
             this.handleError('getUserStore', error);
         }
@@ -356,8 +356,8 @@ export class StoreService {
      */
     async getVendorDashboardStats(userId: string): Promise<VendorDashboardStatsDto> {
         try {
-            // Get the vendor's store
-            const store = await this.storeRepository.findByOwnerId(userId);
+            // Get store
+            const store = await this.storeRepository.findOneByCondition({ ownerId: userId });
             if (!store) {
                 throw new NotFoundException('You do not have a store yet');
             }

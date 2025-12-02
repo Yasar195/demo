@@ -167,7 +167,7 @@ export class VouchersService extends BaseService<Voucher> {
     async createVoucherRequest(userId: string, dto: CreateVoucherRequestDto): Promise<VoucherRequest> {
         try {
             // Check if user has a store
-            const store = await this.storeRepository.findByOwnerId(userId);
+            const store = await this.storeRepository.findOneByCondition({ ownerId: userId });
             if (!store) {
                 throw new BadRequestException('You must have an approved store to create voucher requests');
             }
@@ -210,7 +210,7 @@ export class VouchersService extends BaseService<Voucher> {
     async getUserVoucherRequests(userId: string, pagination: PaginationDto): Promise<{ data: VoucherRequest[]; total: number; page: number; totalPages: number }> {
         try {
             // Check if user has a store
-            const store = await this.storeRepository.findByOwnerId(userId);
+            const store = await this.storeRepository.findOneByCondition({ ownerId: userId });
             if (!store) {
                 throw new BadRequestException('You must have an approved store to view voucher requests');
             }
@@ -242,7 +242,7 @@ export class VouchersService extends BaseService<Voucher> {
 
             // If not admin, check if the request belongs to the user's store
             if (!isAdmin && userId) {
-                const store = await this.storeRepository.findByOwnerId(userId);
+                const store = await this.storeRepository.findOneByCondition({ ownerId: userId });
                 if (!store || request.storeId !== store.id) {
                     throw new ForbiddenException('You do not have permission to view this voucher request');
                 }
@@ -265,7 +265,7 @@ export class VouchersService extends BaseService<Voucher> {
             }
 
             // Check store ownership
-            const store = await this.storeRepository.findByOwnerId(userId);
+            const store = await this.storeRepository.findOneByCondition({ ownerId: userId });
             if (!store || request.storeId !== store.id) {
                 throw new ForbiddenException('You do not have permission to update this voucher request');
             }
@@ -318,7 +318,7 @@ export class VouchersService extends BaseService<Voucher> {
             }
 
             // Check store ownership
-            const store = await this.storeRepository.findByOwnerId(userId);
+            const store = await this.storeRepository.findOneByCondition({ ownerId: userId });
             if (!store || request.storeId !== store.id) {
                 throw new ForbiddenException('You do not have permission to cancel this voucher request');
             }
