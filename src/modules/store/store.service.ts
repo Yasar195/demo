@@ -7,6 +7,7 @@ import {
     HttpException,
     Logger,
 } from '@nestjs/common';
+import { RedisService } from '../../integrations/redis/redis.service';
 import { StoreRequestRepository, StoreRepository } from './repositories';
 import { StoreRequest, Store } from './entities';
 import { CreateStoreRequestDto, UpdateStoreRequestDto, ApproveStoreRequestDto, RejectStoreRequestDto, QueryStoreRequestDto, VendorDashboardStatsDto, VoucherStatsDto, RevenueStatsDto, StoreInfoDto } from './dto';
@@ -32,6 +33,7 @@ export class StoreService {
         private readonly paymentsRepository: PaymentsRepository,
         private readonly vouchersRepository: VouchersRepository,
         private readonly voucherRequestRepository: VoucherRequestRepository,
+        private readonly redisService: RedisService,
     ) { }
 
     /**
@@ -71,11 +73,19 @@ export class StoreService {
                 userIds: admins.map((admin) => admin.id),
             });
 
-            return await this.storeRequestRepository.create({
+            const request = await this.storeRequestRepository.create({
                 userId,
                 ...dto,
                 status: StoreRequestStatus.PENDING,
             } as Partial<StoreRequest>);
+
+            // Invalidate user store requests and all store requests (admin view)
+            await Promise.all([
+                this.redisService.reset(`store_requests:user:${userId}:*`),
+                this.redisService.reset('store_requests:all:*'),
+            ]);
+
+            return request;
         } catch (error) {
             this.handleError('createStoreRequest', error);
         }
@@ -86,6 +96,13 @@ export class StoreService {
      */
     async getUserStoreRequests(userId: string, pagination: PaginationDto): Promise<{ data: StoreRequest[]; total: number; page: number; totalPages: number }> {
         try {
+            const cacheKey = `store_requests:user:${userId}:${JSON.stringify(pagination || {})}`;
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+
             const page = pagination?.page ?? 1;
             const limit = pagination?.limit ?? 10;
             const sortBy = pagination?.sortBy;
@@ -101,7 +118,11 @@ export class StoreService {
             const orderBy: Record<string, 'asc' | 'desc'> = {
                 [resolvedSortBy]: sortBy ? sortOrder : 'desc',
             };
-            return await this.storeRequestRepository.findWithPagination(page, limit, { userId }, orderBy);
+            const result = await this.storeRequestRepository.findWithPagination(page, limit, { userId }, orderBy);
+
+            await this.redisService.set(cacheKey, JSON.stringify(result), 3600); // Cache for 1 hour
+
+            return result;
         } catch (error) {
             this.handleError('getUserStoreRequests', error);
         }
@@ -112,6 +133,18 @@ export class StoreService {
      */
     async getStoreRequestById(id: string, userId?: string, isAdmin = false): Promise<StoreRequest> {
         try {
+            const cacheKey = `store_requests:${id}`;
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                const request = JSON.parse(cachedData);
+                // If not admin, check if the request belongs to the user
+                if (!isAdmin && userId && request.userId !== userId) {
+                    throw new ForbiddenException('You do not have permission to view this store request');
+                }
+                return request;
+            }
+
             const request = await this.storeRequestRepository.findById(id);
             if (!request) {
                 throw new NotFoundException('Store request not found');
@@ -121,6 +154,8 @@ export class StoreService {
             if (!isAdmin && userId && request.userId !== userId) {
                 throw new ForbiddenException('You do not have permission to view this store request');
             }
+
+            await this.redisService.set(cacheKey, JSON.stringify(request), 3600); // Cache for 1 hour
 
             return request;
         } catch (error) {
@@ -167,6 +202,13 @@ export class StoreService {
                 userIds: admins.map((admin) => admin.id),
             });
 
+            // Invalidate specific request cache, user requests, and all requests
+            await Promise.all([
+                this.redisService.del(`store_requests:${id}`),
+                this.redisService.reset(`store_requests:user:${userId}:*`),
+                this.redisService.reset('store_requests:all:*'),
+            ]);
+
             return updated;
         } catch (error) {
             this.handleError('updateStoreRequest', error);
@@ -197,6 +239,13 @@ export class StoreService {
                 status: StoreRequestStatus.CANCELLED,
             } as Partial<StoreRequest>);
 
+            // Invalidate specific request cache, user requests, and all requests
+            await Promise.all([
+                this.redisService.del(`store_requests:${id}`),
+                this.redisService.reset(`store_requests:user:${userId}:*`),
+                this.redisService.reset('store_requests:all:*'),
+            ]);
+
             return true;
         } catch (error) {
             this.handleError('cancelStoreRequest', error);
@@ -213,6 +262,13 @@ export class StoreService {
         totalPages: number;
     }> {
         try {
+            const cacheKey = `store_requests:all:${JSON.stringify(query)}`;
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+
             const page = query.page ?? 1;
             const limit = query.limit ?? 10;
             const sortBy = query.sortBy ?? 'createdAt';
@@ -228,7 +284,11 @@ export class StoreService {
                 [sortBy]: sortOrder,
             };
 
-            return await this.storeRequestRepository.findWithFilters(page, limit, filters, orderBy);
+            const result = await this.storeRequestRepository.findWithFilters(page, limit, filters, orderBy);
+
+            await this.redisService.set(cacheKey, JSON.stringify(result), 300); // Cache for 5 minutes
+
+            return result;
         } catch (error) {
             this.handleError('getAllStoreRequests', error);
         }
@@ -289,6 +349,15 @@ export class StoreService {
             });
 
             this.logger.log(`Store created successfully for request ${id} by admin ${adminId}`);
+
+            // Invalidate specific request cache, user requests, all requests, and user store cache
+            await Promise.all([
+                this.redisService.del(`store_requests:${id}`),
+                this.redisService.reset(`store_requests:user:${request.userId}:*`),
+                this.redisService.reset('store_requests:all:*'),
+                this.redisService.del(`stores:user:${request.userId}`),
+            ]);
+
             return store;
         } catch (error) {
             this.handleError('approveStoreRequest', error);
@@ -334,6 +403,14 @@ export class StoreService {
             });
 
             this.logger.log(`Store request ${id} rejected by admin ${adminId}`);
+
+            // Invalidate specific request cache, user requests, and all requests
+            await Promise.all([
+                this.redisService.del(`store_requests:${id}`),
+                this.redisService.reset(`store_requests:user:${request.userId}:*`),
+                this.redisService.reset('store_requests:all:*'),
+            ]);
+
             return updated;
         } catch (error) {
             this.handleError('rejectStoreRequest', error);
@@ -345,7 +422,20 @@ export class StoreService {
      */
     async getUserStore(userId: string): Promise<Store | null> {
         try {
-            return await this.storeRepository.findOneByCondition({ ownerId: userId });
+            const cacheKey = `stores:user:${userId}`;
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+
+            const store = await this.storeRepository.findOneByCondition({ ownerId: userId });
+
+            if (store) {
+                await this.redisService.set(cacheKey, JSON.stringify(store), 3600); // Cache for 1 hour
+            }
+
+            return store;
         } catch (error) {
             this.handleError('getUserStore', error);
         }
@@ -356,6 +446,13 @@ export class StoreService {
      */
     async getVendorDashboardStats(userId: string): Promise<VendorDashboardStatsDto> {
         try {
+            const cacheKey = `stores:dashboard:${userId}`;
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+
             // Get store
             const store = await this.storeRepository.findOneByCondition({ ownerId: userId });
             if (!store) {
@@ -370,12 +467,16 @@ export class StoreService {
                 this.getPendingVoucherRequests(store.id),
             ]);
 
-            return {
+            const result = {
                 store: storeInfo,
                 voucherStats,
                 revenueStats,
                 pendingVoucherRequests,
             };
+
+            await this.redisService.set(cacheKey, JSON.stringify(result), 300); // Cache for 5 minutes
+
+            return result;
         } catch (error) {
             this.handleError('getVendorDashboardStats', error);
         }
@@ -495,7 +596,18 @@ export class StoreService {
                 },
             };
 
-            return await this.storeRepository.findWithPagination(page, limit, {}, orderBy, include);
+            const cacheKey = `stores:trending:${JSON.stringify(pagination || {})}`;
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+
+            const result = await this.storeRepository.findWithPagination(page, limit, {}, orderBy, include);
+
+            await this.redisService.set(cacheKey, JSON.stringify(result), 3600); // Cache for 1 hour
+
+            return result;
 
         } catch (error) {
             this.handleError('getTrendingStores', error);

@@ -4,6 +4,7 @@ import { PaymentAdapter, PaymentIntentResult } from '../../integrations/payments
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { PaymentsRepository } from './repositories/payments.repository';
 import { VouchersRepository } from '../vouchers/repositories/vouchers.repository';
+import { RedisService } from '../../integrations/redis/redis.service';
 
 @Injectable()
 export class PaymentsService {
@@ -13,10 +14,18 @@ export class PaymentsService {
         @Inject(PAYMENT_ADAPTER) private readonly paymentAdapter: PaymentAdapter,
         private readonly paymentsRepository: PaymentsRepository,
         private readonly vouchersRepository: VouchersRepository,
+        private readonly redisService: RedisService,
     ) { }
 
     async getPaymentIntentStatus(paymentIntentId: string): Promise<{ completed: boolean; status: string; raw: unknown }> {
         try {
+            // const cacheKey = `payments:status:${paymentIntentId}`;
+            // const cachedData = await this.redisService.get(cacheKey);
+
+            // if (cachedData) {
+            //     return JSON.parse(cachedData);
+            // }
+
             if (!this.paymentAdapter.getPaymentIntentStatus) {
                 throw new Error('Payment status lookup is not supported by the configured payment adapter');
             }
@@ -38,7 +47,11 @@ export class PaymentsService {
             }
 
             const completed = intent.status === 'succeeded';
-            return { completed, status: intent.status, raw: intent.raw };
+            const result = { completed, status: intent.status, raw: intent.raw };
+
+            // await this.redisService.set(cacheKey, JSON.stringify(result), 5); // Cache for 5 seconds
+
+            return result;
         } catch (error) {
             this.handleError('getPaymentIntentStatus', error);
         }
@@ -149,6 +162,9 @@ export class PaymentsService {
                 await this.paymentsRepository.updateStatusByTransactionId(paymentIntentId, 'CANCELLED');
                 await this.releasePaymentReservation(paymentIntentId);
             }
+
+            // Invalidate cache
+            // await this.redisService.del(`payments:status:${paymentIntentId}`);
 
             return result;
         } catch (error) {

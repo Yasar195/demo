@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { RedisService } from '../../integrations/redis/redis.service';
 import { OrdersRepository } from './repositories';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { Order } from './entities';
@@ -10,11 +11,14 @@ import * as QRCode from 'qrcode';
 
 @Injectable()
 export class OrdersService {
+    private readonly logger = new Logger(OrdersService.name);
+
     constructor(
         private readonly ordersRepository: OrdersRepository,
         private readonly prisma: PrismaService,
         private readonly s3Service: S3Service,
         private readonly sseService: SseService,
+        private readonly redisService: RedisService,
     ) { }
 
     /**
@@ -24,67 +28,97 @@ export class OrdersService {
         userId: string,
         pagination?: PaginationDto
     ): Promise<{ data: Order[]; total: number; page: number; totalPages: number }> {
-        const page = pagination?.page ?? 1;
-        const limit = pagination?.limit ?? 10;
-        const sortBy = pagination?.sortBy ?? 'createdAt';
-        const sortOrder: 'asc' | 'desc' = pagination?.sortOrder?.toLowerCase() === 'asc' ? 'asc' : 'desc';
+        try {
+            const cacheKey = `orders:user:${userId}:${JSON.stringify(pagination || {})}`;
+            const cachedData = await this.redisService.get(cacheKey);
 
-        const orderBy = {
-            [sortBy]: sortOrder
-        };
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
 
-        return await this.ordersRepository.findWithPagination(
-            page,
-            limit,
-            { userId },
-            orderBy,
-            {
-                voucher: {
-                    include: {
-                        store: {
-                            select: {
-                                id: true,
-                                name: true,
-                                logo: true,
+            const page = pagination?.page ?? 1;
+            const limit = pagination?.limit ?? 10;
+            const sortBy = pagination?.sortBy ?? 'createdAt';
+            const sortOrder: 'asc' | 'desc' = pagination?.sortOrder?.toLowerCase() === 'asc' ? 'asc' : 'desc';
+
+            const orderBy = {
+                [sortBy]: sortOrder
+            };
+
+            const result = await this.ordersRepository.findWithPagination(
+                page,
+                limit,
+                { userId },
+                orderBy,
+                {
+                    voucher: {
+                        include: {
+                            store: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    logo: true,
+                                }
                             }
                         }
-                    }
-                },
-                payment: {
-                    select: {
-                        id: true,
-                        amount: true,
-                        status: true,
-                        paymentMethod: true,
-                        completedAt: true,
-                        transactionId: true,
+                    },
+                    payment: {
+                        select: {
+                            id: true,
+                            amount: true,
+                            status: true,
+                            paymentMethod: true,
+                            completedAt: true,
+                            transactionId: true,
+                        }
                     }
                 }
-            }
-        );
+            );
+
+            await this.redisService.set(cacheKey, JSON.stringify(result), 3600); // Cache for 1 hour
+
+            return result;
+        } catch (error) {
+            this.logger.error('Failed to get user orders', error);
+            throw error;
+        }
     }
 
     /**
      * Get a specific order by ID
      */
     async getUserOrderById(userId: string, orderId: string): Promise<Order> {
-        const order = await this.ordersRepository.findOneByCondition(
-            { id: orderId, userId },
-            {
-                voucher: {
-                    include: {
-                        store: true
-                    }
-                },
-                payment: true
+        try {
+            const cacheKey = `orders:${orderId}`;
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                return JSON.parse(cachedData);
             }
-        );
 
-        if (!order) {
-            throw new NotFoundException('Order not found');
+            const order = await this.ordersRepository.findOneByCondition(
+                { id: orderId, userId },
+                {
+                    voucher: {
+                        include: {
+                            store: true
+                        }
+                    },
+                    payment: true
+                }
+            );
+
+            if (!order) {
+                throw new NotFoundException('Order not found');
+            }
+
+            await this.redisService.set(cacheKey, JSON.stringify(order), 3600); // Cache for 1 hour
+
+            return order;
+        } catch (error) {
+            this.logger.error('Failed to get user order by id', error);
+            throw error;
         }
-
-        return order;
     }
 
     /**
@@ -161,6 +195,9 @@ export class OrdersService {
                 console.error('Failed to generate/upload QR code:', qrError);
             }
 
+            // Invalidate user orders cache
+            await this.redisService.reset(`orders:user:${userId}:*`);
+
             return order;
         } catch (error) {
             if (error.message === 'OUT_OF_STOCK') {
@@ -209,6 +246,12 @@ export class OrdersService {
 
         // Send SSE events
         this.sendRedemptionEvents(updatedOrder, userId, order.userId);
+
+        // Invalidate specific order cache and user orders cache
+        await Promise.all([
+            this.redisService.del(`orders:${order.id}`),
+            this.redisService.reset(`orders:user:${order.userId}:*`),
+        ]);
 
         return updatedOrder;
     }

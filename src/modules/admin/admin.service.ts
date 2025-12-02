@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { RedisService } from '../../integrations/redis/redis.service';
 import { DashboardStatsDto, DetailedDashboardStatsDto, RevenueBreakdownDto } from './dto';
 import { PaymentStatus } from '@prisma/client';
 import { UsersRepository } from '../users/repositories/users.repository';
@@ -17,6 +18,7 @@ export class AdminService {
         private readonly vouchersRepository: VouchersRepository,
         private readonly voucherRequestRepository: VoucherRequestRepository,
         private readonly storeRequestRepository: StoreRequestRepository,
+        private readonly redisService: RedisService,
     ) { }
 
     /**
@@ -24,18 +26,29 @@ export class AdminService {
      */
     async getDashboardStats(): Promise<DashboardStatsDto> {
         try {
+            const cacheKey = 'admin:dashboard:stats';
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+
             const [totalUsers, activeStores, revenueData] = await Promise.all([
                 this.getTotalUsers(),
                 this.getActiveStores(),
                 this.getTotalRevenue(),
             ]);
 
-            return {
+            const result = {
                 totalUsers,
                 activeStores,
                 totalRevenue: revenueData.total,
                 currency: revenueData.currency,
             };
+
+            await this.redisService.set(cacheKey, JSON.stringify(result), 300); // Cache for 5 minutes
+
+            return result;
         } catch (error) {
             this.logger.error('Failed to get dashboard stats', error);
             throw error;
@@ -47,6 +60,13 @@ export class AdminService {
      */
     async getDetailedDashboardStats(): Promise<DetailedDashboardStatsDto> {
         try {
+            const cacheKey = 'admin:dashboard:detailed_stats';
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+
             const [
                 totalUsers,
                 activeStores,
@@ -65,7 +85,7 @@ export class AdminService {
                 this.getPendingVoucherRequests(),
             ]);
 
-            return {
+            const result = {
                 totalUsers,
                 activeStores,
                 totalRevenue: revenueData.total,
@@ -77,6 +97,10 @@ export class AdminService {
                 storeRequestsPending,
                 voucherRequestsPending,
             };
+
+            await this.redisService.set(cacheKey, JSON.stringify(result), 300); // Cache for 5 minutes
+
+            return result;
         } catch (error) {
             this.logger.error('Failed to get detailed dashboard stats', error);
             throw error;

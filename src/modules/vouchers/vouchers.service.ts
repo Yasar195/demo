@@ -11,6 +11,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { UsersRepository } from '../users/repositories';
 import { StoreRepository } from '../store/repositories';
 import { SseService } from '../sse/sse.service';
+import { RedisService } from '../../integrations/redis/redis.service';
 
 @Injectable()
 export class VouchersService extends BaseService<Voucher> {
@@ -23,6 +24,7 @@ export class VouchersService extends BaseService<Voucher> {
         private readonly usersRepository: UsersRepository,
         private readonly notificationsService: NotificationsService,
         private readonly sseService: SseService,
+        private readonly redisService: RedisService,
     ) {
         super(vouchersRepository);
     }
@@ -32,6 +34,12 @@ export class VouchersService extends BaseService<Voucher> {
      */
     async findAllPaginated(query?: QueryVoucherDto): Promise<{ data: Voucher[]; total: number; page: number; totalPages: number }> {
         try {
+            const cacheKey = `vouchers:all:${JSON.stringify(query || {})}`;
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
             const page = query?.page ?? 1;
             const limit = query?.limit ?? 10;
             const orderBy = query?.orderBy ?? VoucherOrderBy.NEWEST;
@@ -53,29 +61,42 @@ export class VouchersService extends BaseService<Voucher> {
             }
 
             // Handle ordering based on the orderBy enum
+            let result;
+            // Handle ordering based on the orderBy enum
             switch (orderBy) {
                 case VoucherOrderBy.LOWEST_QUANTITY:
-                    return await this.vouchersRepository.findWithPagination(page, limit, filters, { quantityAvailable: 'asc' });
+                    result = await this.vouchersRepository.findWithPagination(page, limit, filters, { quantityAvailable: 'asc' });
+                    break;
 
                 case VoucherOrderBy.EXPIRING_SOON:
-                    return await this.vouchersRepository.findWithPagination(page, limit, filters, { expiresAt: 'asc' });
+                    result = await this.vouchersRepository.findWithPagination(page, limit, filters, { expiresAt: 'asc' });
+                    break;
 
                 case VoucherOrderBy.HIGHEST_DISCOUNT:
-                    return await this.vouchersRepository.findWithPagination(page, limit, filters, { discount: 'desc' });
+                    result = await this.vouchersRepository.findWithPagination(page, limit, filters, { discount: 'desc' });
+                    break;
 
                 case VoucherOrderBy.LOWEST_PRICE:
-                    return await this.vouchersRepository.findWithPagination(page, limit, filters, { sellingPrice: 'asc' });
+                    result = await this.vouchersRepository.findWithPagination(page, limit, filters, { sellingPrice: 'asc' });
+                    break;
 
                 case VoucherOrderBy.OLDEST:
-                    return await this.vouchersRepository.findWithPagination(page, limit, filters, { createdAt: 'asc' });
+                    result = await this.vouchersRepository.findWithPagination(page, limit, filters, { createdAt: 'asc' });
+                    break;
 
                 case VoucherOrderBy.SELLING_FAST:
-                    return await this.vouchersRepository.findWithSellingFastOrder(page, limit, filters);
+                    result = await this.vouchersRepository.findWithSellingFastOrder(page, limit, filters);
+                    break;
 
                 case VoucherOrderBy.NEWEST:
                 default:
-                    return await this.vouchersRepository.findWithPagination(page, limit, filters, { createdAt: 'desc' });
+                    result = await this.vouchersRepository.findWithPagination(page, limit, filters, { createdAt: 'desc' });
+                    break;
             }
+
+            await this.redisService.set(cacheKey, JSON.stringify(result), 300); // Cache for 5 minutes
+
+            return result;
         } catch (error) {
             this.handleError('findAllPaginated', error);
         }
@@ -90,10 +111,15 @@ export class VouchersService extends BaseService<Voucher> {
                 throw new BadRequestException('Voucher code already exists');
             }
 
-            return await this.vouchersRepository.create({
+            const voucher = await this.vouchersRepository.create({
                 ...dto,
                 expiresAt: new Date(dto.expiresAt),
             } as Partial<Voucher>);
+
+            // Invalidate all vouchers cache
+            await this.redisService.reset('vouchers:all:*');
+
+            return voucher;
         } catch (error) {
             this.handleError('createVoucher', error);
         }
@@ -142,7 +168,17 @@ export class VouchersService extends BaseService<Voucher> {
                 throw new NotFoundException('Voucher not found');
             }
 
-            return await this.vouchersRepository.softDelete(id);
+            const deleted = await this.vouchersRepository.softDelete(id);
+
+            if (deleted) {
+                // Invalidate all vouchers cache and specific voucher code cache
+                await Promise.all([
+                    this.redisService.reset('vouchers:all:*'),
+                    this.redisService.del(`vouchers:code:${voucher.code}`),
+                ]);
+            }
+
+            return deleted;
         } catch (error) {
             this.handleError('deleteVoucher', error);
         }
@@ -153,7 +189,20 @@ export class VouchersService extends BaseService<Voucher> {
      */
     async findByCode(code: string): Promise<Voucher | null> {
         try {
-            return await this.vouchersRepository.findByCode(code);
+            const cacheKey = `vouchers:code:${code}`;
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+
+            const voucher = await this.vouchersRepository.findByCode(code);
+
+            if (voucher) {
+                await this.redisService.set(cacheKey, JSON.stringify(voucher), 3600); // Cache for 1 hour
+            }
+
+            return voucher;
         } catch (error) {
             this.handleError('findByCode', error);
         }
@@ -193,12 +242,20 @@ export class VouchersService extends BaseService<Voucher> {
                 userIds: admins.map((admin) => admin.id),
             });
 
-            return await this.voucherRequestRepository.create({
+            const request = await this.voucherRequestRepository.create({
                 storeId: store.id,
                 ...dto,
                 expiresAt: new Date(dto.expiresAt),
                 status: VoucherRequestStatus.PENDING,
             } as Partial<VoucherRequest>);
+
+            // Invalidate user voucher requests and all voucher requests
+            await Promise.all([
+                this.redisService.reset(`voucher_requests:user:${userId}:*`),
+                this.redisService.reset('voucher_requests:all:*'),
+            ]);
+
+            return request;
         } catch (error) {
             this.handleError('createVoucherRequest', error);
         }
@@ -224,7 +281,18 @@ export class VouchersService extends BaseService<Voucher> {
                 [sortBy]: sortOrder,
             };
 
-            return await this.voucherRequestRepository.findWithPagination(page, limit, { storeId: store.id }, orderBy);
+            const cacheKey = `voucher_requests:user:${userId}:${JSON.stringify(pagination || {})}`;
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+
+            const result = await this.voucherRequestRepository.findWithPagination(page, limit, { storeId: store.id }, orderBy);
+
+            await this.redisService.set(cacheKey, JSON.stringify(result), 3600); // Cache for 1 hour
+
+            return result;
         } catch (error) {
             this.handleError('getUserVoucherRequests', error);
         }
@@ -235,6 +303,21 @@ export class VouchersService extends BaseService<Voucher> {
      */
     async getVoucherRequestById(id: string, userId?: string, isAdmin = false): Promise<VoucherRequest> {
         try {
+            const cacheKey = `voucher_requests:${id}`;
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                const request = JSON.parse(cachedData);
+                // If not admin, check if the request belongs to the user's store
+                if (!isAdmin && userId) {
+                    const store = await this.storeRepository.findOneByCondition({ ownerId: userId });
+                    if (!store || request.storeId !== store.id) {
+                        throw new ForbiddenException('You do not have permission to view this voucher request');
+                    }
+                }
+                return request;
+            }
+
             const request = await this.voucherRequestRepository.findById(id);
             if (!request) {
                 throw new NotFoundException('Voucher request not found');
@@ -247,6 +330,8 @@ export class VouchersService extends BaseService<Voucher> {
                     throw new ForbiddenException('You do not have permission to view this voucher request');
                 }
             }
+
+            await this.redisService.set(cacheKey, JSON.stringify(request), 3600); // Cache for 1 hour
 
             return request;
         } catch (error) {
@@ -332,6 +417,13 @@ export class VouchersService extends BaseService<Voucher> {
                 status: VoucherRequestStatus.CANCELLED,
             } as Partial<VoucherRequest>);
 
+            // Invalidate specific request cache, user requests, and all requests
+            await Promise.all([
+                this.redisService.del(`voucher_requests:${id}`),
+                this.redisService.reset(`voucher_requests:user:${userId}:*`),
+                this.redisService.reset('voucher_requests:all:*'),
+            ]);
+
             return true;
         } catch (error) {
             this.handleError('cancelVoucherRequest', error);
@@ -348,6 +440,13 @@ export class VouchersService extends BaseService<Voucher> {
         totalPages: number;
     }> {
         try {
+            const cacheKey = `voucher_requests:all:${JSON.stringify(query)}`;
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+
             const page = query.page ?? 1;
             const limit = query.limit ?? 10;
             const sortBy = query.sortBy ?? 'createdAt';
@@ -363,7 +462,11 @@ export class VouchersService extends BaseService<Voucher> {
                 [sortBy]: sortOrder,
             };
 
-            return await this.voucherRequestRepository.findWithFilters(page, limit, filters, orderBy);
+            const result = await this.voucherRequestRepository.findWithFilters(page, limit, filters, orderBy);
+
+            await this.redisService.set(cacheKey, JSON.stringify(result), 300); // Cache for 5 minutes
+
+            return result;
         } catch (error) {
             this.handleError('getAllVoucherRequests', error);
         }
@@ -441,6 +544,16 @@ export class VouchersService extends BaseService<Voucher> {
             }
 
             this.logger.log(`Voucher created successfully for request ${id} by admin ${adminId}`);
+
+            // Invalidate specific request cache, user requests, all requests, and all vouchers
+            const storeOwnerId = store ? store.ownerId : null;
+            await Promise.all([
+                this.redisService.del(`voucher_requests:${id}`),
+                storeOwnerId ? this.redisService.reset(`voucher_requests:user:${storeOwnerId}:*`) : Promise.resolve(),
+                this.redisService.reset('voucher_requests:all:*'),
+                this.redisService.reset('vouchers:all:*'),
+            ]);
+
             return voucher;
         } catch (error) {
             this.handleError('approveVoucherRequest', error);
@@ -491,6 +604,15 @@ export class VouchersService extends BaseService<Voucher> {
             }
 
             this.logger.log(`Voucher request ${id} rejected by admin ${adminId}`);
+
+            // Invalidate specific request cache, user requests, and all requests
+            const storeOwnerId = store ? store.ownerId : null;
+            await Promise.all([
+                this.redisService.del(`voucher_requests:${id}`),
+                storeOwnerId ? this.redisService.reset(`voucher_requests:user:${storeOwnerId}:*`) : Promise.resolve(),
+                this.redisService.reset('voucher_requests:all:*'),
+            ]);
+
             return updated;
         } catch (error) {
             this.handleError('rejectVoucherRequest', error);
