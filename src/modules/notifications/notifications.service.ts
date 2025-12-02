@@ -6,6 +6,7 @@ import { DeviceTokenRepository } from "./repositories/device-token.repository";
 import { PaginationDto } from "src/common/dto";
 import { RegisterDeviceTokenDto } from "./dto/notifications.dto";
 import { SseService } from "../sse/sse.service";
+import { RedisService } from '../../integrations/redis/redis.service';
 
 @Injectable()
 export class NotificationsService extends BaseService<NotificationRecipient> {
@@ -16,12 +17,20 @@ export class NotificationsService extends BaseService<NotificationRecipient> {
         private readonly notificationsRepository: NotificationsRepository,
         private readonly deviceTokenRepository: DeviceTokenRepository,
         private readonly sseService: SseService,
+        private readonly redisService: RedisService,
     ) {
         super(notificationsRepository);
     }
 
     async findByUserId(userId: string, pagination: PaginationDto): Promise<{ data: NotificationRecipient[]; total: number; page: number; totalPages: number }> {
         try {
+            const cacheKey = `notifications:user:${userId}:${JSON.stringify(pagination || {})}`;
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+
             const page = pagination?.page ?? 1;
             const limit = pagination?.limit ?? 10;
             const sortBy = pagination?.sortBy;
@@ -37,7 +46,12 @@ export class NotificationsService extends BaseService<NotificationRecipient> {
             const orderBy: Record<string, 'asc' | 'desc'> = {
                 [resolvedSortBy]: sortBy ? sortOrder : 'desc',
             };
-            return this.notificationsRepository.findWithPagination(page, limit, { userId }, orderBy, { notification: true });
+
+            const result = await this.notificationsRepository.findWithPagination(page, limit, { userId }, orderBy, { notification: true });
+
+            await this.redisService.set(cacheKey, JSON.stringify(result), 300); // Cache for 5 minutes
+
+            return result;
         } catch (error) {
             this.handleError('findAllPaginated', error);
         }
@@ -58,6 +72,11 @@ export class NotificationsService extends BaseService<NotificationRecipient> {
                 });
             }
 
+            // Invalidate notifications cache for all affected users
+            await Promise.all(
+                data.userIds.map(userId => this.redisService.reset(`notifications:user:${userId}:*`))
+            );
+
             this.logger.log(`Notification created and SSE events sent to ${data.userIds.length} users`);
         } catch (error) {
             this.handleError('createNotification', error);
@@ -75,7 +94,12 @@ export class NotificationsService extends BaseService<NotificationRecipient> {
 
     async readNotifications(userId: string, id?: string): Promise<NotificationRecipient[] | null> {
         try {
-            return await this.notificationsRepository.readNotifications(userId, id);
+            const result = await this.notificationsRepository.readNotifications(userId, id);
+
+            // Invalidate notifications cache for this user
+            await this.redisService.reset(`notifications:user:${userId}:*`);
+
+            return result;
         } catch (error) {
             this.handleError('createNotification', error);
         }
@@ -83,7 +107,18 @@ export class NotificationsService extends BaseService<NotificationRecipient> {
 
     async getUnreadCount(userId: string): Promise<number> {
         try {
-            return await this.notificationsRepository.getNotificationCount(userId);
+            const cacheKey = `notifications:unread:${userId}`;
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                return parseInt(cachedData, 10);
+            }
+
+            const count = await this.notificationsRepository.getNotificationCount(userId);
+
+            await this.redisService.set(cacheKey, count.toString(), 60); // Cache for 1 minute
+
+            return count;
         } catch (error) {
             this.handleError('createNotification', error);
         }
