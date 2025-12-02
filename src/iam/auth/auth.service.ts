@@ -6,6 +6,8 @@ import { StringValue } from 'ms';
 import { UsersService } from '../../modules/users/users.service';
 import { User } from '../../modules/users/entities/user.entity';
 import { hashPassword } from '../../common/utils/crypto.utils';
+import { FirebaseService } from '../../integrations/firebase/firebase.service';
+import { RegisterFirebaseDto } from './dto/register-firebase.dto';
 
 type AuthTokens = { accessToken: string; refreshToken: string };
 type AuthResult = { user: Omit<User, 'password'>; tokens: AuthTokens };
@@ -18,6 +20,7 @@ export class AuthService {
         private readonly usersService: UsersService,
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService,
+        private readonly firebaseService: FirebaseService,
     ) {
         this.googleClient = new OAuth2Client(this.configService.get<string>('google.clientId'));
     }
@@ -154,5 +157,85 @@ export class AuthService {
 
     async logout(userId: string): Promise<void> {
         await this.usersService.updateRefreshToken(userId, null);
+    }
+
+    // ==================== Firebase Authentication Methods ====================
+
+    /**
+     * Step 1: Validate email for Firebase registration
+     * Checks if email is valid and available
+     */
+    async validateEmailForRegistration(email: string): Promise<{
+        valid: boolean;
+        exists: boolean;
+        message: string;
+    }> {
+        return this.firebaseService.validateEmail(email);
+    }
+
+    /**
+     * Step 2: Complete Firebase user registration
+     * Creates user in Firebase and syncs to local database
+     */
+    async registerWithFirebase(dto: RegisterFirebaseDto): Promise<AuthResult> {
+        try {
+            // Create user in Firebase
+            const firebaseUser = await this.firebaseService.createUser(
+                dto.email,
+                dto.password,
+                dto.name,
+            );
+
+            // Create/sync user in local database
+            const user = await this.usersService.upsertOAuthUser({
+                provider: 'firebase',
+                providerId: firebaseUser.uid,
+                email: firebaseUser.email!,
+                name: dto.name || firebaseUser.displayName || firebaseUser.email!,
+                avatarUrl: firebaseUser.photoURL,
+            });
+
+            // Generate JWT tokens
+            const tokens = await this.generateTokens(user);
+            return { user: this.sanitizeUser(user), tokens };
+        } catch (error) {
+            throw new UnauthorizedException(
+                error instanceof Error ? error.message : 'Registration failed',
+            );
+        }
+    }
+
+    /**
+     * Login with Firebase ID token
+     * Verifies token and syncs/creates local user
+     */
+    async loginWithFirebase(idToken: string): Promise<AuthResult> {
+        try {
+            // Verify Firebase ID token
+            const decodedToken = await this.firebaseService.verifyIdToken(idToken);
+
+            // Get Firebase user details
+            const firebaseUser = await this.firebaseService.getUserByUid(decodedToken.uid);
+            if (!firebaseUser || !firebaseUser.email) {
+                throw new UnauthorizedException('Firebase user not found or missing email');
+            }
+
+            // Create/sync user in local database
+            const user = await this.usersService.upsertOAuthUser({
+                provider: 'firebase',
+                providerId: firebaseUser.uid,
+                email: firebaseUser.email,
+                name: firebaseUser.displayName || firebaseUser.email,
+                avatarUrl: firebaseUser.photoURL,
+            });
+
+            // Generate JWT tokens
+            const tokens = await this.generateTokens(user);
+            return { user: this.sanitizeUser(user), tokens };
+        } catch (error) {
+            throw new UnauthorizedException(
+                error instanceof Error ? error.message : 'Firebase authentication failed',
+            );
+        }
     }
 }

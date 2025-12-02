@@ -15,7 +15,7 @@ export class FirebaseService implements OnModuleInit {
     private readonly logger = new Logger(FirebaseService.name);
     private firebaseApp: admin.app.App;
 
-    constructor(private configService: ConfigService) {}
+    constructor(private configService: ConfigService) { }
 
     async onModuleInit() {
         try {
@@ -256,5 +256,159 @@ export class FirebaseService implements OnModuleInit {
         ];
 
         return invalidErrorCodes.includes(error?.code);
+    }
+
+    // ==================== Firebase Authentication Methods ====================
+
+    /**
+     * Verify Firebase ID token
+     * @param idToken - Firebase ID token from client
+     * @returns Decoded token payload
+     */
+    async verifyIdToken(idToken: string): Promise<admin.auth.DecodedIdToken> {
+        if (!this.firebaseApp) {
+            throw new Error('Firebase not initialized');
+        }
+
+        try {
+            const decodedToken = await admin.auth().verifyIdToken(idToken);
+            this.logger.log(`Token verified for user: ${decodedToken.uid}`);
+            return decodedToken;
+        } catch (error) {
+            this.logger.error('Failed to verify Firebase ID token', error);
+            throw new Error('Invalid Firebase token');
+        }
+    }
+
+    /**
+     * Get user by email from Firebase
+     * @param email - User email
+     * @returns Firebase user record or null if not found
+     */
+    async getUserByEmail(email: string): Promise<admin.auth.UserRecord | null> {
+        if (!this.firebaseApp) {
+            throw new Error('Firebase not initialized');
+        }
+
+        try {
+            const userRecord = await admin.auth().getUserByEmail(email);
+            return userRecord;
+        } catch (error: any) {
+            if (error.code === 'auth/user-not-found') {
+                return null;
+            }
+            this.logger.error(`Failed to get user by email: ${email}`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get user by UID from Firebase
+     * @param uid - Firebase user ID
+     * @returns Firebase user record or null if not found
+     */
+    async getUserByUid(uid: string): Promise<admin.auth.UserRecord | null> {
+        if (!this.firebaseApp) {
+            throw new Error('Firebase not initialized');
+        }
+
+        try {
+            const userRecord = await admin.auth().getUser(uid);
+            return userRecord;
+        } catch (error: any) {
+            if (error.code === 'auth/user-not-found') {
+                return null;
+            }
+            this.logger.error(`Failed to get user by UID: ${uid}`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Create a new Firebase user with email and password
+     * @param email - User email
+     * @param password - User password
+     * @param displayName - Optional display name
+     * @returns Created Firebase user record
+     */
+    async createUser(email: string, password: string, displayName?: string): Promise<admin.auth.UserRecord> {
+        if (!this.firebaseApp) {
+            throw new Error('Firebase not initialized');
+        }
+
+        try {
+            const userRecord = await admin.auth().createUser({
+                email,
+                password,
+                displayName,
+                emailVerified: false,
+            });
+
+            this.logger.log(`Created Firebase user: ${userRecord.uid} (${email})`);
+            return userRecord;
+        } catch (error: any) {
+            this.logger.error(`Failed to create Firebase user: ${email}`, error);
+
+            // Provide more specific error messages
+            if (error.code === 'auth/email-already-exists') {
+                throw new Error('Email already registered');
+            } else if (error.code === 'auth/invalid-email') {
+                throw new Error('Invalid email format');
+            } else if (error.code === 'auth/invalid-password') {
+                throw new Error('Password must be at least 6 characters');
+            }
+
+            throw new Error('Failed to create user');
+        }
+    }
+
+    /**
+     * Validate email format and check if it exists in Firebase
+     * @param email - Email to validate
+     * @returns Validation result with availability status
+     */
+    async validateEmail(email: string): Promise<{ valid: boolean; exists: boolean; message: string }> {
+        if (!this.firebaseApp) {
+            return {
+                valid: false,
+                exists: false,
+                message: 'Firebase not initialized',
+            };
+        }
+
+        // Basic email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return {
+                valid: false,
+                exists: false,
+                message: 'Invalid email format',
+            };
+        }
+
+        try {
+            const user = await this.getUserByEmail(email);
+
+            if (user) {
+                return {
+                    valid: true,
+                    exists: true,
+                    message: 'Email already registered',
+                };
+            }
+
+            return {
+                valid: true,
+                exists: false,
+                message: 'Email is available',
+            };
+        } catch (error) {
+            this.logger.error(`Error validating email: ${email}`, error);
+            return {
+                valid: true,
+                exists: false,
+                message: 'Email validation failed, but format is valid',
+            };
+        }
     }
 }
