@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, HttpException, InternalServerErrorException, BadRequestException, Logger } from '@nestjs/common';
+import { RedisService } from '../../integrations/redis/redis.service';
 import { BaseService } from '../../core/abstracts/base.service';
 import { User } from './entities/user.entity';
 import { UsersRepository } from './repositories/users.repository';
@@ -12,7 +13,10 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 export class UsersService extends BaseService<User> {
     private readonly logger = new Logger(UsersService.name);
 
-    constructor(private readonly usersRepository: UsersRepository) {
+    constructor(
+        private readonly usersRepository: UsersRepository,
+        private readonly redisService: RedisService,
+    ) {
         super(usersRepository);
     }
 
@@ -21,6 +25,16 @@ export class UsersService extends BaseService<User> {
      */
     async findAllPaginated(pagination?: PaginationDto): Promise<{ data: User[]; total: number; page: number; totalPages: number }> {
         try {
+            const cacheKey = `users:all:${JSON.stringify(pagination || {})}`;
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                this.logger.log(`Cache hit for ${cacheKey}`);
+                return JSON.parse(cachedData);
+            }
+
+            this.logger.log(`Cache miss for ${cacheKey}`);
+
             const page = pagination?.page ?? 1;
             const limit = pagination?.limit ?? 10;
             const sortBy = pagination?.sortBy;
@@ -37,9 +51,39 @@ export class UsersService extends BaseService<User> {
                 [resolvedSortBy]: sortBy ? sortOrder : 'desc',
             };
 
-            return await this.usersRepository.findWithPagination(page, limit, {}, orderBy);
+            const result = await this.usersRepository.findWithPagination(page, limit, {}, orderBy);
+
+            await this.redisService.set(cacheKey, JSON.stringify(result), 3600); // Cache for 1 hour
+
+            return result;
         } catch (error) {
             this.handleError('findAllPaginated', error);
+        }
+    }
+
+    /**
+     * Find user by ID with caching
+     */
+    async findById(id: string): Promise<User | null> {
+        try {
+            const cacheKey = `users:${id}`;
+            const cachedUser = await this.redisService.get(cacheKey);
+
+            if (cachedUser) {
+                this.logger.log(`Cache hit for ${cacheKey}`);
+                return JSON.parse(cachedUser);
+            }
+
+            this.logger.log(`Cache miss for ${cacheKey}`);
+
+            const user = await this.usersRepository.findById(id);
+            if (user) {
+                await this.redisService.set(cacheKey, JSON.stringify(user), 3600); // Cache for 1 hour
+            }
+
+            return user;
+        } catch (error) {
+            this.handleError('findById', error);
         }
     }
 
@@ -55,10 +99,15 @@ export class UsersService extends BaseService<User> {
 
             const hashedPassword = hashPassword(dto.password);
 
-            return await this.usersRepository.create({
+            const user = await this.usersRepository.create({
                 ...dto,
                 password: hashedPassword,
             } as Partial<User>);
+
+            // Invalidate all pagination caches
+            await this.redisService.reset('users:all:*');
+
+            return user;
         } catch (error) {
             this.handleError('createUser', error);
         }
@@ -83,6 +132,12 @@ export class UsersService extends BaseService<User> {
             if (!updated) {
                 throw new NotFoundException('User not found');
             }
+
+            // Invalidate specific user cache and all pagination caches
+            await Promise.all([
+                this.redisService.del(`users:${id}`),
+                this.redisService.reset('users:all:*'),
+            ]);
 
             return updated;
         } catch (error) {
@@ -122,7 +177,17 @@ export class UsersService extends BaseService<User> {
                 throw new NotFoundException('User not found');
             }
 
-            return await this.usersRepository.softDelete(id);
+            const deleted = await this.usersRepository.softDelete(id);
+
+            if (deleted) {
+                // Invalidate specific user cache and all pagination caches
+                await Promise.all([
+                    this.redisService.del(`users:${id}`),
+                    this.redisService.reset('users:all:*'),
+                ]);
+            }
+
+            return deleted;
         } catch (error) {
             this.handleError('deleteUser', error);
         }

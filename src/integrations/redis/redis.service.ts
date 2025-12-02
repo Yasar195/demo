@@ -169,4 +169,82 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
             this.logger.error(`Failed to unsubscribe from channel ${channel}:`, error);
         }
     }
+
+    /**
+     * Get value from cache
+     */
+    async get(key: string): Promise<string | null> {
+        if (!this.isRedisConnected()) {
+            return null;
+        }
+        try {
+            return await this.publisher.get(key);
+        } catch (error) {
+            this.logger.error(`Failed to get key ${key}:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Set value in cache with optional TTL
+     */
+    async set(key: string, value: string, ttl?: number): Promise<void> {
+        if (!this.isRedisConnected()) {
+            return;
+        }
+        try {
+            if (ttl) {
+                await this.publisher.set(key, value, 'EX', ttl);
+            } else {
+                await this.publisher.set(key, value);
+            }
+        } catch (error) {
+            this.logger.error(`Failed to set key ${key}:`, error);
+        }
+    }
+
+    /**
+     * Delete value from cache
+     */
+    async del(key: string): Promise<void> {
+        if (!this.isRedisConnected()) {
+            return;
+        }
+        try {
+            await this.publisher.del(key);
+        } catch (error) {
+            this.logger.error(`Failed to delete key ${key}:`, error);
+        }
+    }
+
+    /**
+     * Reset keys matching a pattern
+     */
+    async reset(pattern: string): Promise<void> {
+        if (!this.isRedisConnected()) {
+            return;
+        }
+        try {
+            const stream = this.publisher.scanStream({
+                match: pattern,
+                count: 100
+            });
+
+            stream.on('data', async (keys: string[]) => {
+                if (keys.length) {
+                    const pipeline = this.publisher.pipeline();
+                    keys.forEach((key) => {
+                        pipeline.del(key);
+                    });
+                    await pipeline.exec();
+                }
+            });
+
+            stream.on('end', () => {
+                this.logger.log(`Reset keys matching pattern: ${pattern}`);
+            });
+        } catch (error) {
+            this.logger.error(`Failed to reset keys with pattern ${pattern}:`, error);
+        }
+    }
 }
