@@ -33,11 +33,34 @@ export class OrdersService {
             [sortBy]: sortOrder
         };
 
-        return await this.ordersRepository.findUserOrdersWithPagination(
-            userId,
+        return await this.ordersRepository.findWithPagination(
             page,
             limit,
-            orderBy
+            { userId },
+            orderBy,
+            {
+                voucher: {
+                    include: {
+                        store: {
+                            select: {
+                                id: true,
+                                name: true,
+                                logo: true,
+                            }
+                        }
+                    }
+                },
+                payment: {
+                    select: {
+                        id: true,
+                        amount: true,
+                        status: true,
+                        paymentMethod: true,
+                        completedAt: true,
+                        transactionId: true,
+                    }
+                }
+            }
         );
     }
 
@@ -45,7 +68,17 @@ export class OrdersService {
      * Get a specific order by ID
      */
     async getUserOrderById(userId: string, orderId: string): Promise<Order> {
-        const order = await this.ordersRepository.findUserOrderById(userId, orderId);
+        const order = await this.ordersRepository.findOneByCondition(
+            { id: orderId, userId },
+            {
+                voucher: {
+                    include: {
+                        store: true
+                    }
+                },
+                payment: true
+            }
+        );
 
         if (!order) {
             throw new NotFoundException('Order not found');
