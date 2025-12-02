@@ -7,6 +7,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { PrismaService } from '../../database/prisma.service';
 import { S3Service } from '../../integrations/s3/s3.service';
 import { SseService } from '../sse/sse.service';
+import { GiftCardsService } from '../gift-cards/gift-cards.service';
 import * as QRCode from 'qrcode';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class OrdersService {
         private readonly s3Service: S3Service,
         private readonly sseService: SseService,
         private readonly redisService: RedisService,
+        private readonly giftCardsService: GiftCardsService,
     ) { }
 
     /**
@@ -166,7 +168,8 @@ export class OrdersService {
         //     throw new BadRequestException('Payment amount does not match voucher price');
         // }
 
-        // 3. Generate instance code logic moved to repository for bulk creation
+        // 3. Calculate purchase position (1st, 2nd, 3rd buyer, etc.)
+        const purchasePosition = voucher.quantityTotal - voucher.quantityAvailable + 1;
 
         // 4. Execute purchase transaction
         try {
@@ -180,6 +183,7 @@ export class OrdersService {
                     faceValue: voucher.faceValue,
                     discount: voucher.discount,
                     expiresAt: voucher.expiresAt,
+                    // purchasePosition, // Add purchase position
                 }
             );
 
@@ -243,6 +247,22 @@ export class OrdersService {
 
         // Perform the redemption
         const updatedOrder = await this.ordersRepository.redeemVoucher(order.id, quantityToRedeem);
+
+        // Deliver gift cards if applicable (happens AFTER successful redemption)
+        try {
+            if (order.purchasePosition && order.voucherId) {
+                await this.giftCardsService.deliverGiftCardsOnRedemption(
+                    userId,
+                    order.id,
+                    order.voucherId,
+                    order.purchasePosition
+                );
+                this.logger.log(`Gift cards delivered for order ${order.id}`);
+            }
+        } catch (error) {
+            // Log error but don't fail the redemption
+            this.logger.error(`Failed to deliver gift cards for order ${order.id}`, error);
+        }
 
         // Send SSE events
         this.sendRedemptionEvents(updatedOrder, userId, order.userId);

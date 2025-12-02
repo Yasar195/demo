@@ -22,6 +22,7 @@ model User {
   reviewedVoucherRequests VoucherRequest[]        @relation("AdminVoucherReviews")
   payments                Payment[]               @relation("UserPayments")
   purchasedVouchers       UserPurchasedVoucher[]  @relation("UserVouchers")
+  giftCards               UserGiftCard[]          @relation("UserGiftCards")
 
   @@map("users")
 }

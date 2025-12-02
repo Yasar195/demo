@@ -24,6 +24,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { RedisModule } from './integrations/redis';
+import { GiftCardsModule } from './modules/gift-cards/gift-cards.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { RedisModule } from './integrations/redis';
     SseModule,
     AdminModule,
     OrdersModule,
+    GiftCardsModule,
     SchedulerModule,
     IamModule,
   ],

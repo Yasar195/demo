@@ -1,12 +1,84 @@
 // Gift card model
 model GiftCard {
-  id        String    @id @default(uuid())
-  code      String    @unique
-  balance   Float
-  expiresAt DateTime
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id         String  @id @default(uuid())
+  code       String  @unique // Scratch code for real cards, auto-generated for default
+  isRealCard Boolean @default(false) @map("is_real_card") // true = real card with scratch code
+
+  // Gift card details
+  title       String // e.g., "₹100 Amazon Gift Card"
+  description String? // e.g., "Redeem on Amazon.in"
+  value       Float? // Gift card value (if applicable)
+  imageUrl    String? @map("image_url") // Gift card image
+
+  // Validity
+  expiresAt DateTime @map("expires_at")
+
+  // Timestamps
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  voucherMappings VoucherGiftCardMapping[] @relation("GiftCardMappings")
+  deliveredCards  UserGiftCard[]           @relation("DeliveredGiftCards")
 
   @@map("gift_cards")
+}
+
+// Maps gift cards to vouchers (position-based for real cards, voucher-wide for default)
+model VoucherGiftCardMapping {
+  id         String @id @default(uuid())
+  voucherId  String @map("voucher_id")
+  giftCardId String @map("gift_card_id")
+
+  // Position mapping (null = default for ALL purchases, number = specific position)
+  position  Int? // e.g., 3 means "3rd buyer gets this gift card"
+  isDefault Boolean @default(false) @map("is_default") // true = given to all buyers
+
+  // Tracking
+  isDelivered Boolean @default(false) @map("is_delivered") // Has this position been purchased?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  voucher  Voucher  @relation("VoucherGiftCards", fields: [voucherId], references: [id])
+  giftCard GiftCard @relation("GiftCardMappings", fields: [giftCardId], references: [id])
+
+  @@unique([voucherId, position]) // Can't assign two cards to same position
+  @@index([voucherId], name: "mapping_voucher_idx")
+  @@index([giftCardId], name: "mapping_giftcard_idx")
+  @@map("voucher_gift_card_mappings")
+}
+
+// Tracks delivered gift cards to users
+model UserGiftCard {
+  id                     String @id @default(uuid())
+  userId                 String @map("user_id")
+  giftCardId             String @map("gift_card_id")
+  userPurchasedVoucherId String @map("user_purchased_voucher_id") // Which voucher purchase triggered this
+
+  // Delivery details
+  purchasePosition Int     @map("purchase_position") // Which purchase number was this? (1st, 2nd, etc.)
+  scratchCode      String? @map("scratch_code") // Copy of scratch code (for real cards)
+  isRevealed       Boolean @default(false) @map("is_revealed") // Has user scratched/revealed the code?
+
+  // Status
+  isUsed Boolean   @default(false) @map("is_used")
+  usedAt DateTime? @map("used_at")
+
+  // Timestamps
+  deliveredAt DateTime @default(now()) @map("delivered_at")
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user                 User                 @relation("UserGiftCards", fields: [userId], references: [id])
+  giftCard             GiftCard             @relation("DeliveredGiftCards", fields: [giftCardId], references: [id])
+  userPurchasedVoucher UserPurchasedVoucher @relation("VoucherGiftCards", fields: [userPurchasedVoucherId], references: [id])
+
+  @@index([userId], name: "user_giftcard_user_idx")
+  @@index([giftCardId], name: "user_giftcard_card_idx")
+  @@map("user_gift_cards")
 }
