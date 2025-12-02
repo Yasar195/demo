@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/co
 import { OrdersService } from './orders.service';
 import { BaseResponseDto } from '../../common/dto/base-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
-import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateOrderDto, RedeemVoucherDto } from './dto';
 import { JwtAuthGuard } from '../../iam/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
@@ -50,4 +50,22 @@ export class OrdersController {
         const order = await this.ordersService.createOrder(user.id, dto);
         return BaseResponseDto.success(order, 'Voucher purchased successfully');
     }
+
+    /**
+     * Redeem a voucher
+     * POST /orders/redeem
+     */
+    @Post('redeem')
+    async redeemVoucher(
+        @CurrentUser() user: User,
+        @Body() dto: RedeemVoucherDto
+    ) {
+        const order = await this.ordersService.redeemVoucher(
+            user.id,
+            dto.instanceCode,
+            dto.quantity ?? 1
+        );
+        return BaseResponseDto.success(order, 'Voucher redeemed successfully');
+    }
 }
+

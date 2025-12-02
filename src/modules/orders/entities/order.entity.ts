@@ -25,4 +25,13 @@ export class Order implements PrismaUserPurchasedVoucher {
     createdAt: Date;
     updatedAt: Date;
     deletedAt: Date | null;
+
+    // Optional relations (populated when included in query)
+    voucher?: {
+        id: string;
+        name: string;
+        code: string;
+        [key: string]: any;
+    };
+    payment?: any;
 }

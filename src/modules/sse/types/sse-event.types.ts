@@ -7,6 +7,8 @@ export type SSEEventType =
     | 'voucher_request_approved'
     | 'voucher_request_rejected'
     | 'voucher_request_created'
+    | 'voucher_redeemed'
+    | 'voucher_redemption_confirmed'
     | 'store_request_approved'
     | 'store_request_rejected'
     | 'heartbeat';

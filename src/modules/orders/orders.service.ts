@@ -5,6 +5,7 @@ import { Order } from './entities';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { PrismaService } from '../../database/prisma.service';
 import { S3Service } from '../../integrations/s3/s3.service';
+import { SseService } from '../sse/sse.service';
 import * as QRCode from 'qrcode';
 
 @Injectable()
@@ -13,6 +14,7 @@ export class OrdersService {
         private readonly ordersRepository: OrdersRepository,
         private readonly prisma: PrismaService,
         private readonly s3Service: S3Service,
+        private readonly sseService: SseService,
     ) { }
 
     /**
@@ -132,6 +134,82 @@ export class OrdersService {
                 throw new BadRequestException('Voucher is out of stock');
             }
             throw error;
+        }
+    }
+
+    /**
+     * Redeem a voucher using its instance code
+     */
+    async redeemVoucher(userId: string, instanceCode: string, quantityToRedeem: number = 1): Promise<Order> {
+        // Find the voucher by instance code
+        const order = await this.ordersRepository.findByInstanceCode(instanceCode);
+
+        if (!order) {
+            throw new NotFoundException('Voucher not found');
+        }
+
+        // Verify ownership
+        if (order.userId !== userId) {
+            throw new BadRequestException('This voucher does not belong to you');
+        }
+
+        // Check if voucher is expired
+        if (order.expiresAt < new Date()) {
+            throw new BadRequestException('This voucher has expired');
+        }
+
+        // Check if voucher is already fully used
+        if (order.status === 'USED') {
+            throw new BadRequestException('This voucher has already been fully redeemed');
+        }
+
+        // Check if there's enough quantity available to redeem
+        const availableQuantity = order.quantity - order.quantityUsed;
+        if (quantityToRedeem > availableQuantity) {
+            throw new BadRequestException(
+                `Cannot redeem ${quantityToRedeem} voucher(s). Only ${availableQuantity} available.`
+            );
+        }
+
+        // Perform the redemption
+        const updatedOrder = await this.ordersRepository.redeemVoucher(order.id, quantityToRedeem);
+
+        // Send SSE events
+        this.sendRedemptionEvents(updatedOrder, userId, order.userId);
+
+        return updatedOrder;
+    }
+
+    /**
+     * Send SSE events for voucher redemption
+     */
+    private sendRedemptionEvents(order: Order, scannerId: string, buyerId: string): void {
+        const eventData = {
+            orderId: order.id,
+            instanceCode: order.instanceCode,
+            voucherId: order.voucherId,
+            voucherName: order.voucher?.name,
+            quantity: order.quantity,
+            quantityUsed: order.quantityUsed,
+            status: order.status,
+            redeemedAt: order.redeemedAt,
+        };
+
+        // Send to the buyer (voucher owner)
+        this.sseService.sendToUser(buyerId, 'voucher_redeemed', {
+            ...eventData,
+            message: `Your voucher "${order.voucher?.name}" has been redeemed.`,
+            role: 'buyer',
+        });
+
+        // Send to the scanner (person who redeemed)
+        // Only send if scanner is different from buyer
+        if (scannerId !== buyerId) {
+            this.sseService.sendToUser(scannerId, 'voucher_redemption_confirmed', {
+                ...eventData,
+                message: `Voucher "${order.voucher?.name}" redeemed successfully.`,
+                role: 'scanner',
+            });
         }
     }
 

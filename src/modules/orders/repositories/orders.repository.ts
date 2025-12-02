@@ -161,4 +161,68 @@ export class OrdersRepository extends PrismaRepository<Order> {
             data: { qrCodeUrl } as any, // Cast to any until schema is regenerated
         });
     }
+
+    /**
+     * Find a purchased voucher by instance code
+     */
+    async findByInstanceCode(instanceCode: string): Promise<Order | null> {
+        return this.model.findUnique({
+            where: { instanceCode },
+            include: {
+                voucher: {
+                    include: {
+                        store: true
+                    }
+                },
+                payment: true
+            }
+        }) as Promise<Order | null>;
+    }
+
+    /**
+     * Redeem a voucher by updating quantity used and status
+     */
+    async redeemVoucher(orderId: string, quantityToRedeem: number): Promise<Order> {
+        return await this.prisma.$transaction(async (tx) => {
+            // Get the current order state
+            const order = await tx.userPurchasedVoucher.findUnique({
+                where: { id: orderId },
+            });
+
+            if (!order) {
+                throw new Error('Order not found');
+            }
+
+            const newQuantityUsed = order.quantityUsed + quantityToRedeem;
+            const totalQuantity = order.quantity;
+
+            // Determine new status
+            let newStatus = order.status;
+            if (newQuantityUsed >= totalQuantity) {
+                newStatus = 'USED';
+            } else if (newQuantityUsed > 0) {
+                newStatus = 'PARTIALLY_USED';
+            }
+
+            // Update the order
+            const updatedOrder = await tx.userPurchasedVoucher.update({
+                where: { id: orderId },
+                data: {
+                    quantityUsed: newQuantityUsed,
+                    status: newStatus as any,
+                    redeemedAt: new Date(),
+                },
+                include: {
+                    voucher: {
+                        include: {
+                            store: true,
+                        },
+                    },
+                    payment: true,
+                },
+            });
+
+            return updatedOrder as unknown as Order;
+        });
+    }
 }

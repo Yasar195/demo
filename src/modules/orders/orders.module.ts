@@ -3,9 +3,10 @@ import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
 import { OrdersRepository } from './repositories';
 import { S3Module } from '../../integrations/s3/s3.module';
+import { SseModule } from '../sse/sse.module';
 
 @Module({
-    imports: [S3Module],
+    imports: [S3Module, SseModule],
     controllers: [OrdersController],
     providers: [OrdersService, OrdersRepository],
     exports: [OrdersService],
