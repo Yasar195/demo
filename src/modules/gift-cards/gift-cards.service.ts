@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { BaseService } from '../../core/abstracts';
 import {
     GiftCardRepository,
-    VoucherGiftCardMappingRepository,
+    // VoucherGiftCardMappingRepository,
     UserGiftCardRepository,
 } from './repositories';
 import { GiftCard, VoucherGiftCardMapping, UserGiftCard } from './entities';
@@ -14,7 +14,7 @@ export class GiftCardsService extends BaseService<GiftCard> {
 
     constructor(
         private readonly giftCardRepository: GiftCardRepository,
-        private readonly mappingRepository: VoucherGiftCardMappingRepository,
+        // private readonly mappingRepository: VoucherGiftCardMappingRepository,
         private readonly userGiftCardRepository: UserGiftCardRepository,
     ) {
         super(giftCardRepository);
@@ -51,121 +51,121 @@ export class GiftCardsService extends BaseService<GiftCard> {
     /**
      * Admin: Assign default gift card to voucher (given to ALL buyers)
      */
-    async assignDefaultGiftCard(voucherId: string, dto: AssignPositionGiftCardDto): Promise<VoucherGiftCardMapping> {
-        try {
-            // Check if default already exists
-            const existing = await this.mappingRepository.getDefaultMapping(voucherId);
-            if (existing) {
-                throw new BadRequestException('Voucher already has a default gift card. Remove it first.');
-            }
+    // async assignDefaultGiftCard(voucherId: string, dto: AssignPositionGiftCardDto): Promise<VoucherGiftCardMapping> {
+    //     try {
+    //         // Check if default already exists
+    //         const existing = await this.mappingRepository.getDefaultMapping(voucherId);
+    //         if (existing) {
+    //             throw new BadRequestException('Voucher already has a default gift card. Remove it first.');
+    //         }
 
-            const mapping = await this.mappingRepository.create({
-                voucherId,
-                giftCardId: dto.giftCardId,
-                isDefault: true,
-                position: dto.position,
-                isDelivered: false,
-            } as Partial<VoucherGiftCardMapping>);
+    //         const mapping = await this.mappingRepository.create({
+    //             voucherId,
+    //             giftCardId: dto.giftCardId,
+    //             isDefault: true,
+    //             position: dto.position,
+    //             isDelivered: false,
+    //         } as Partial<VoucherGiftCardMapping>);
 
-            this.logger.log(`Default gift card assigned to voucher ${voucherId}`);
-            return mapping;
-        } catch (error) {
-            this.handleError('assignDefaultGiftCard', error);
-        }
-    }
+    //         this.logger.log(`Default gift card assigned to voucher ${voucherId}`);
+    //         return mapping;
+    //     } catch (error) {
+    //         this.handleError('assignDefaultGiftCard', error);
+    //     }
+    // }
 
     /**
      * Admin: Assign real gift card to specific position
      */
-    async assignPositionGiftCard(voucherId: string, dto: AssignPositionGiftCardDto): Promise<VoucherGiftCardMapping> {
-        try {
-            // Check if position already has a gift card
-            const existing = await this.mappingRepository.getPositionMapping(voucherId, dto.position);
-            if (existing) {
-                throw new BadRequestException(`Position ${dto.position} already has a gift card assigned.`);
-            }
+    // async assignPositionGiftCard(voucherId: string, dto: AssignPositionGiftCardDto): Promise<VoucherGiftCardMapping> {
+    //     try {
+    //         // Check if position already has a gift card
+    //         const existing = await this.mappingRepository.getPositionMapping(voucherId, dto.position);
+    //         if (existing) {
+    //             throw new BadRequestException(`Position ${dto.position} already has a gift card assigned.`);
+    //         }
 
-            const mapping = await this.mappingRepository.create({
-                voucherId,
-                giftCardId: dto.giftCardId,
-                isDefault: false,
-                position: dto.position,
-                isDelivered: false,
-            } as Partial<VoucherGiftCardMapping>);
+    //         const mapping = await this.mappingRepository.create({
+    //             voucherId,
+    //             giftCardId: dto.giftCardId,
+    //             isDefault: false,
+    //             position: dto.position,
+    //             isDelivered: false,
+    //         } as Partial<VoucherGiftCardMapping>);
 
-            this.logger.log(`Gift card assigned to voucher ${voucherId} position ${dto.position}`);
-            return mapping;
-        } catch (error) {
-            this.handleError('assignPositionGiftCard', error);
-        }
-    }
+    //         this.logger.log(`Gift card assigned to voucher ${voucherId} position ${dto.position}`);
+    //         return mapping;
+    //     } catch (error) {
+    //         this.handleError('assignPositionGiftCard', error);
+    //     }
+    // }
 
     /**
      * Admin: Get all gift card mappings for a voucher
      */
-    async getVoucherMappings(voucherId: string): Promise<{
-        default: VoucherGiftCardMapping | null;
-        positionMappings: VoucherGiftCardMapping[];
-    }> {
-        try {
-            return await this.mappingRepository.getVoucherMappings(voucherId);
-        } catch (error) {
-            this.handleError('getVoucherMappings', error);
-        }
-    }
+    // async getVoucherMappings(voucherId: string): Promise<{
+    //     default: VoucherGiftCardMapping | null;
+    //     positionMappings: VoucherGiftCardMapping[];
+    // }> {
+    //     try {
+    //         return await this.mappingRepository.getVoucherMappings(voucherId);
+    //     } catch (error) {
+    //         this.handleError('getVoucherMappings', error);
+    //     }
+    // }
 
     /**
      * Deliver gift cards to user after voucher redemption
      * Called from OrdersService after successful redemption
      */
-    async deliverGiftCardsOnRedemption(
-        userId: string,
-        userPurchasedVoucherId: string,
-        voucherId: string,
-        purchasePosition: number,
-    ): Promise<UserGiftCard[]> {
-        try {
-            const deliveredCards: UserGiftCard[] = [];
+    // async deliverGiftCardsOnRedemption(
+    //     userId: string,
+    //     userPurchasedVoucherId: string,
+    //     voucherId: string,
+    //     purchasePosition: number,
+    // ): Promise<UserGiftCard[]> {
+    //     try {
+    //         const deliveredCards: UserGiftCard[] = [];
 
-            // 1. Deliver default gift card if exists
-            const defaultMapping = await this.mappingRepository.getDefaultMapping(voucherId);
-            if (defaultMapping) {
-                const userGiftCard = await this.deliverGiftCard(
-                    userId,
-                    userPurchasedVoucherId,
-                    (defaultMapping as any).giftCard,
-                    purchasePosition,
-                );
-                deliveredCards.push(userGiftCard);
-            }
+    //         // 1. Deliver default gift card if exists
+    //         const defaultMapping = await this.mappingRepository.getDefaultMapping(voucherId);
+    //         if (defaultMapping) {
+    //             const userGiftCard = await this.deliverGiftCard(
+    //                 userId,
+    //                 userPurchasedVoucherId,
+    //                 (defaultMapping as any).giftCard,
+    //                 purchasePosition,
+    //             );
+    //             deliveredCards.push(userGiftCard);
+    //         }
 
-            // 2. Deliver position-specific gift card if exists
-            const positionMapping = await this.mappingRepository.getPositionMapping(voucherId, purchasePosition);
-            if (positionMapping) {
-                const userGiftCard = await this.deliverGiftCard(
-                    userId,
-                    userPurchasedVoucherId,
-                    (positionMapping as any).giftCard,
-                    purchasePosition,
-                );
-                deliveredCards.push(userGiftCard);
+    //         // 2. Deliver position-specific gift card if exists
+    //         const positionMapping = await this.mappingRepository.getPositionMapping(voucherId, purchasePosition);
+    //         if (positionMapping) {
+    //             const userGiftCard = await this.deliverGiftCard(
+    //                 userId,
+    //                 userPurchasedVoucherId,
+    //                 (positionMapping as any).giftCard,
+    //                 purchasePosition,
+    //             );
+    //             deliveredCards.push(userGiftCard);
 
-                // Mark position mapping as delivered
-                await this.mappingRepository.markAsDelivered(positionMapping.id);
-                this.logger.log(`Position ${purchasePosition} gift card delivered to user ${userId}`);
-            }
+    //             // Mark position mapping as delivered
+    //             await this.mappingRepository.markAsDelivered(positionMapping.id);
+    //             this.logger.log(`Position ${purchasePosition} gift card delivered to user ${userId}`);
+    //         }
 
-            if (deliveredCards.length > 0) {
-                this.logger.log(`Delivered ${deliveredCards.length} gift card(s) to user ${userId}`);
-            }
+    //         if (deliveredCards.length > 0) {
+    //             this.logger.log(`Delivered ${deliveredCards.length} gift card(s) to user ${userId}`);
+    //         }
 
-            return deliveredCards;
-        } catch (error) {
-            this.logger.error('Failed to deliver gift cards', error);
-            // Don't throw error - redemption should succeed even if gift card delivery fails
-            return [];
-        }
-    }
+    //         return deliveredCards;
+    //     } catch (error) {
+    //         this.logger.error('Failed to deliver gift cards', error);
+    //         // Don't throw error - redemption should succeed even if gift card delivery fails
+    //         return [];
+    //     }
+    // }
 
     /**
      * Helper: Deliver a single gift card to user

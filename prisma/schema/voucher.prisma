@@ -39,11 +39,11 @@ model Voucher {
   deletedAt DateTime? @map("deleted_at")
 
   // Relations
-  store              Store                    @relation("StoreVouchers", fields: [storeId], references: [id])
-  request            VoucherRequest?          @relation("ApprovedVoucher", fields: [requestId], references: [id])
-  payments           Payment[]                @relation("VoucherPayments")
-  purchasedInstances UserPurchasedVoucher[]   @relation("PurchasedInstances")
-  giftCardMappings   VoucherGiftCardMapping[] @relation("VoucherGiftCards")
+  store              Store                  @relation("StoreVouchers", fields: [storeId], references: [id])
+  request            VoucherRequest?        @relation("ApprovedVoucher", fields: [requestId], references: [id])
+  payments           Payment[]              @relation("VoucherPayments")
+  purchasedInstances UserPurchasedVoucher[] @relation("PurchasedInstances")
+  // giftCardMappings   VoucherGiftCardMapping[] @relation("VoucherGiftCards")
 
   @@index([storeId], name: "voucher_store_idx")
   @@index([category], name: "voucher_category_idx")
@@ -136,10 +136,10 @@ model UserPurchasedVoucher {
   deletedAt DateTime? @map("deleted_at")
 
   // Relations
-  user      User           @relation("UserVouchers", fields: [userId], references: [id])
-  voucher   Voucher        @relation("PurchasedInstances", fields: [voucherId], references: [id])
-  payment   Payment        @relation("PaymentVoucherInstance", fields: [paymentId], references: [id])
-  giftCards UserGiftCard[] @relation("VoucherGiftCards")
+  user    User    @relation("UserVouchers", fields: [userId], references: [id])
+  voucher Voucher @relation("PurchasedInstances", fields: [voucherId], references: [id])
+  payment Payment @relation("PaymentVoucherInstance", fields: [paymentId], references: [id])
+  // giftCards UserGiftCard[] @relation("VoucherGiftCards")
 
   @@index([userId], name: "user_voucher_user_idx")
   @@index([voucherId], name: "user_voucher_voucher_idx")

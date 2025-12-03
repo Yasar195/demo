@@ -2,10 +2,10 @@ export class UserGiftCard {
     id: string;
     userId: string;
     giftCardId: string;
-    userPurchasedVoucherId: string;
+    // userPurchasedVoucherId: string;
 
     // Delivery details
-    purchasePosition: number;
+    // purchasePosition: number;
     scratchCode: string | null;
     isRevealed: boolean;
 

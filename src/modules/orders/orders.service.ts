@@ -249,23 +249,31 @@ export class OrdersService {
         const updatedOrder = await this.ordersRepository.redeemVoucher(order.id, quantityToRedeem);
 
         // Deliver gift cards if applicable (happens AFTER successful redemption)
-        try {
-            if (order.purchasePosition && order.voucherId) {
-                await this.giftCardsService.deliverGiftCardsOnRedemption(
-                    userId,
-                    order.id,
-                    order.voucherId,
-                    order.purchasePosition
-                );
-                this.logger.log(`Gift cards delivered for order ${order.id}`);
-            }
-        } catch (error) {
-            // Log error but don't fail the redemption
-            this.logger.error(`Failed to deliver gift cards for order ${order.id}`, error);
+        // try {
+        //     // if (order.purchasePosition && order.voucherId) {
+        //     //     await this.giftCardsService.deliverGiftCardsOnRedemption(
+        //     //         userId,
+        //     //         order.id,
+        //     //         order.voucherId,
+        //     //         order.purchasePosition
+        //     //     );
+        //     //     this.logger.log(`Gift cards delivered for order ${order.id}`);
+        //     // }
+        // } catch (error) {
+        //     // Log error but don't fail the redemption
+        //     this.logger.error(`Failed to deliver gift cards for order ${order.id}`, error);
+        // }
+
+        const totalOrders = await this.ordersRepository.count({
+            userId
+        })
+
+        if (totalOrders % 5 == 0) {
+            // assigning gift cards
         }
 
         // Send SSE events
-        this.sendRedemptionEvents(updatedOrder, userId, order.userId);
+        this.sendRedemptionEvents(updatedOrder, userId, order.userId, totalOrders % 5);
 
         // Invalidate specific order cache and user orders cache
         await Promise.all([
@@ -279,7 +287,7 @@ export class OrdersService {
     /**
      * Send SSE events for voucher redemption
      */
-    private sendRedemptionEvents(order: Order, scannerId: string, buyerId: string): void {
+    private sendRedemptionEvents(order: Order, scannerId: string, buyerId: string, totalOders: number): void {
         const eventData = {
             orderId: order.id,
             instanceCode: order.instanceCode,
@@ -297,6 +305,11 @@ export class OrdersService {
             message: `Your voucher "${order.voucher?.name}" has been redeemed.`,
             role: 'buyer',
         });
+
+        this.sseService.sendToUser(buyerId, 'gift_card_number', {
+            message: `you next reward in ${5 - totalOders} orders`,
+            role: 'buyer',
+        })
 
         // Send to the scanner (person who redeemed)
         // Only send if scanner is different from buyer

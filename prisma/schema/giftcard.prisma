@@ -19,44 +19,44 @@ model GiftCard {
   deletedAt DateTime? @map("deleted_at")
 
   // Relations
-  voucherMappings VoucherGiftCardMapping[] @relation("GiftCardMappings")
-  deliveredCards  UserGiftCard[]           @relation("DeliveredGiftCards")
+  // voucherMappings VoucherGiftCardMapping[] @relation("GiftCardMappings")
+  deliveredCards UserGiftCard[] @relation("DeliveredGiftCards")
 
   @@map("gift_cards")
 }
 
 // Maps gift cards to vouchers (position-based for real cards, voucher-wide for default)
-model VoucherGiftCardMapping {
-  id         String @id @default(uuid())
-  voucherId  String @map("voucher_id")
-  giftCardId String @map("gift_card_id")
+// model VoucherGiftCardMapping {
+//   id         String @id @default(uuid())
+//   voucherId  String @map("voucher_id")
+//   giftCardId String @map("gift_card_id")
 
-  // Position mapping (null = default for ALL purchases, number = specific position)
-  position  Int? // e.g., 3 means "3rd buyer gets this gift card"
-  isDefault Boolean @default(false) @map("is_default") // true = given to all buyers
+//   // Position mapping (null = default for ALL purchases, number = specific position)
+//   position  Int? // e.g., 3 means "3rd buyer gets this gift card"
+//   isDefault Boolean @default(false) @map("is_default") // true = given to all buyers
 
-  // Tracking
-  isDelivered Boolean @default(false) @map("is_delivered") // Has this position been purchased?
+//   // Tracking
+//   isDelivered Boolean @default(false) @map("is_delivered") // Has this position been purchased?
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+//   createdAt DateTime @default(now()) @map("created_at")
+//   updatedAt DateTime @updatedAt @map("updated_at")
 
-  // Relations
-  voucher  Voucher  @relation("VoucherGiftCards", fields: [voucherId], references: [id])
-  giftCard GiftCard @relation("GiftCardMappings", fields: [giftCardId], references: [id])
+//   // Relations
+//   voucher  Voucher  @relation("VoucherGiftCards", fields: [voucherId], references: [id])
+//   giftCard GiftCard @relation("GiftCardMappings", fields: [giftCardId], references: [id])
 
-  @@unique([voucherId, position]) // Can't assign two cards to same position
-  @@index([voucherId], name: "mapping_voucher_idx")
-  @@index([giftCardId], name: "mapping_giftcard_idx")
-  @@map("voucher_gift_card_mappings")
-}
+//   @@unique([voucherId, position]) // Can't assign two cards to same position
+//   @@index([voucherId], name: "mapping_voucher_idx")
+//   @@index([giftCardId], name: "mapping_giftcard_idx")
+//   @@map("voucher_gift_card_mappings")
+// }
 
 // Tracks delivered gift cards to users
 model UserGiftCard {
-  id                     String @id @default(uuid())
-  userId                 String @map("user_id")
-  giftCardId             String @map("gift_card_id")
-  userPurchasedVoucherId String @map("user_purchased_voucher_id") // Which voucher purchase triggered this
+  id         String @id @default(uuid())
+  userId     String @map("user_id")
+  giftCardId String @map("gift_card_id")
+  // userPurchasedVoucherId String @map("user_purchased_voucher_id") // Which voucher purchase triggered this
 
   // Delivery details
   purchasePosition Int     @map("purchase_position") // Which purchase number was this? (1st, 2nd, etc.)
@@ -74,9 +74,9 @@ model UserGiftCard {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  user                 User                 @relation("UserGiftCards", fields: [userId], references: [id])
-  giftCard             GiftCard             @relation("DeliveredGiftCards", fields: [giftCardId], references: [id])
-  userPurchasedVoucher UserPurchasedVoucher @relation("VoucherGiftCards", fields: [userPurchasedVoucherId], references: [id])
+  user     User     @relation("UserGiftCards", fields: [userId], references: [id])
+  giftCard GiftCard @relation("DeliveredGiftCards", fields: [giftCardId], references: [id])
+  // userPurchasedVoucher UserPurchasedVoucher @relation("VoucherGiftCards", fields: [userPurchasedVoucherId], references: [id])
 
   @@index([userId], name: "user_giftcard_user_idx")
   @@index([giftCardId], name: "user_giftcard_card_idx")

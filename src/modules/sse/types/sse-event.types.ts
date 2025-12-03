@@ -11,6 +11,7 @@ export type SSEEventType =
     | 'voucher_redemption_confirmed'
     | 'store_request_approved'
     | 'store_request_rejected'
+    | 'gift_card_number'
     | 'heartbeat';
 
 export interface SSEEvent {

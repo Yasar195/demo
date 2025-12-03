@@ -14,11 +14,11 @@ export class UserGiftCardRepository extends PrismaRepository<UserGiftCard> {
             where: { userId },
             include: {
                 giftCard: true,
-                userPurchasedVoucher: {
-                    include: {
-                        voucher: true,
-                    },
-                },
+                // userPurchasedVoucher: {
+                //     include: {
+                //         voucher: true,
+                //     },
+                // },
             },
             orderBy: {
                 deliveredAt: 'desc',

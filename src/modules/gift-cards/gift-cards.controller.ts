@@ -61,27 +61,27 @@ export class GiftCardsController {
         return this.giftCardsService.getAllGiftCards();
     }
 
-    @Post('vouchers/:voucherId/default')
-    @Roles(UserRole.ADMIN)
-    async assignDefaultGiftCard(
-        @Param('voucherId') voucherId: string,
-        @Body() dto: AssignPositionGiftCardDto,
-    ) {
-        return this.giftCardsService.assignDefaultGiftCard(voucherId, dto);
-    }
+    // @Post('vouchers/:voucherId/default')
+    // @Roles(UserRole.ADMIN)
+    // async assignDefaultGiftCard(
+    //     @Param('voucherId') voucherId: string,
+    //     @Body() dto: AssignPositionGiftCardDto,
+    // ) {
+    //     return this.giftCardsService.assignDefaultGiftCard(voucherId, dto);
+    // }
 
-    @Post('vouchers/:voucherId/position')
-    @Roles(UserRole.ADMIN)
-    async assignPositionGiftCard(
-        @Param('voucherId') voucherId: string,
-        @Body() dto: AssignPositionGiftCardDto,
-    ) {
-        return this.giftCardsService.assignPositionGiftCard(voucherId, dto);
-    }
+    // @Post('vouchers/:voucherId/position')
+    // @Roles(UserRole.ADMIN)
+    // async assignPositionGiftCard(
+    //     @Param('voucherId') voucherId: string,
+    //     @Body() dto: AssignPositionGiftCardDto,
+    // ) {
+    //     return this.giftCardsService.assignPositionGiftCard(voucherId, dto);
+    // }
 
-    @Get('vouchers/:voucherId/mappings')
-    @Roles(UserRole.ADMIN)
-    async getVoucherMappings(@Param('voucherId') voucherId: string) {
-        return this.giftCardsService.getVoucherMappings(voucherId);
-    }
+    // @Get('vouchers/:voucherId/mappings')
+    // @Roles(UserRole.ADMIN)
+    // async getVoucherMappings(@Param('voucherId') voucherId: string) {
+    //     return this.giftCardsService.getVoucherMappings(voucherId);
+    // }
 }
