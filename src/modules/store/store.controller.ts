@@ -27,6 +27,7 @@ import { BaseResponseDto } from '../../common/dto/base-response.dto';
 import { UserRole } from '@prisma/client';
 import { User } from '../users/entities/user.entity';
 import { PaginationDto } from 'src/common/dto';
+import { SubscriptionGuard } from '../../common/guards/subscription.guard';
 
 @Controller('store-requests')
 @UseGuards(JwtAuthGuard)
@@ -34,7 +35,7 @@ export class StoreController {
     constructor(private readonly storeService: StoreService) { }
 
     /**
-     * Get all stores (with optional location filtering)
+     * Get all stores (with optional location filtering) - PUBLIC
      */
     @Get('stores')
     async getAllStores(@Query() query: QueryStoreDto) {
@@ -43,9 +44,7 @@ export class StoreController {
     }
 
     /**
-     * Get trending stores (Authenticated)
-     * Returns stores sorted by number of active vouchers
-     * IMPORTANT: This must be before :id route to avoid conflicts
+     * Get trending stores - PUBLIC
      */
     @Get('stores/trending')
     async getTrendingStores(@Query() pagination: PaginationDto) {
@@ -55,6 +54,7 @@ export class StoreController {
 
     /**
      * Create a new store request (User)
+     * Note: Subscription will be required after store is approved and created
      */
     @Post()
     async createStoreRequest(
@@ -69,6 +69,7 @@ export class StoreController {
      * Get user's own store requests (User)
      */
     @Get('my-requests')
+    @UseGuards(SubscriptionGuard)
     async getUserStoreRequests(@CurrentUser() user: User, @Query() pagination: PaginationDto) {
         const requests = await this.storeService.getUserStoreRequests(user.id, pagination);
         return BaseResponseDto.success(requests, 'Store requests retrieved successfully');
@@ -78,6 +79,7 @@ export class StoreController {
      * Get user's store (if exists)
      */
     @Get('my-store')
+    @UseGuards(SubscriptionGuard)
     async getUserStore(@CurrentUser() user: User) {
         const store = await this.storeService.getUserStore(user.id);
         return BaseResponseDto.success(store, 'Store retrieved successfully');
@@ -87,6 +89,7 @@ export class StoreController {
      * Get vendor dashboard statistics
      */
     @Get('my-store/dashboard')
+    @UseGuards(SubscriptionGuard)
     async getVendorDashboard(@CurrentUser() user: User): Promise<BaseResponseDto<VendorDashboardStatsDto>> {
         const stats = await this.storeService.getVendorDashboardStats(user.id);
         return BaseResponseDto.success(stats, 'Vendor dashboard statistics retrieved successfully');
@@ -120,6 +123,7 @@ export class StoreController {
      * Update a store request (User, only PENDING)
      */
     @Put(':id')
+    @UseGuards(SubscriptionGuard)
     async updateStoreRequest(
         @Param('id') id: string,
         @CurrentUser() user: User,
@@ -133,6 +137,7 @@ export class StoreController {
      * Cancel a store request (User, only PENDING)
      */
     @Delete(':id')
+    @UseGuards(SubscriptionGuard)
     async cancelStoreRequest(
         @Param('id') id: string,
         @CurrentUser() user: User,

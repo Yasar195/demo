@@ -18,6 +18,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 import { User } from '../users/entities/user.entity';
+import { SubscriptionGuard } from '../../common/guards/subscription.guard';
 
 @Controller('voucher-requests')
 @UseGuards(JwtAuthGuard)
@@ -41,18 +42,21 @@ export class VoucherRequestController {
     }
 
     @Post('/vouchers')
+    @UseGuards(SubscriptionGuard)
     async create(@Body() dto: CreateVoucherDto) {
         const voucher = await this.vouchersService.createVoucher(dto);
         return BaseResponseDto.success(voucher, 'Voucher created successfully');
     }
 
     @Put('/vouchers/:id')
+    @UseGuards(SubscriptionGuard)
     async update(@Param('id') id: string, @Body() dto: UpdateVoucherDto) {
         const voucher = await this.vouchersService.updateVoucher(id, dto);
         return BaseResponseDto.success(voucher, 'Voucher updated successfully');
     }
 
     @Delete('/vouchers/:id')
+    @UseGuards(SubscriptionGuard)
     async remove(@Param('id') id: string) {
         await this.vouchersService.deleteVoucher(id);
         return BaseResponseDto.success(null, 'Voucher deleted successfully');
@@ -62,6 +66,7 @@ export class VoucherRequestController {
      * Create a new voucher request (Store owner)
      */
     @Post()
+    @UseGuards(SubscriptionGuard)
     async createVoucherRequest(
         @CurrentUser() user: User,
         @Body() dto: CreateVoucherRequestDto,
@@ -74,6 +79,7 @@ export class VoucherRequestController {
      * Get user's voucher requests (Store owner)
      */
     @Get('my-requests')
+    @UseGuards(SubscriptionGuard)
     async getUserVoucherRequests(
         @CurrentUser() user: User,
         @Query() pagination: PaginationDto,
@@ -110,6 +116,7 @@ export class VoucherRequestController {
      * Update a voucher request (Store owner, only PENDING)
      */
     @Put(':id')
+    @UseGuards(SubscriptionGuard)
     async updateVoucherRequest(
         @Param('id') id: string,
         @CurrentUser() user: User,
@@ -123,6 +130,7 @@ export class VoucherRequestController {
      * Cancel a voucher request (Store owner, only PENDING)
      */
     @Delete(':id')
+    @UseGuards(SubscriptionGuard)
     async cancelVoucherRequest(
         @Param('id') id: string,
         @CurrentUser() user: User,

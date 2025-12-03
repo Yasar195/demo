@@ -72,3 +72,36 @@ enum VoucherCategory {
 enum PaymentPurpose {
   VOUCHER
 }
+
+enum BillingPeriod {
+  MONTHLY
+  YEARLY
+  QUARTERLY
+}
+
+enum SubscriptionStatus {
+  TRIAL // In trial period
+  ACTIVE // Active paid subscription
+  PAYMENT_REQUIRED // Trial ended, payment required to access store
+  PAST_DUE // Payment failed, in grace period (short: 24-48 hrs)
+  SUSPENDED // Access blocked due to non-payment
+  CANCELLED // Cancelled by user
+  EXPIRED // Subscription expired
+  INCOMPLETE // Payment incomplete
+}
+
+enum SubscriptionAction {
+  CREATED
+  ACTIVATED
+  UPGRADED
+  DOWNGRADED
+  RENEWED
+  CANCELLED
+  EXPIRED
+  SUSPENDED
+  REACTIVATED
+  TRIAL_STARTED
+  TRIAL_ENDED
+  PAYMENT_FAILED
+  PAYMENT_SUCCEEDED
+}

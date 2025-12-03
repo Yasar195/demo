@@ -15,14 +15,15 @@ model Store {
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  deletedAt DateTime? @map("deleted_at")
 
   // Relations
-  owner           User             @relation("StoreOwner", fields: [ownerId], references: [id])
-  request         StoreRequest?    @relation("ApprovedStore", fields: [requestId], references: [id])
+  owner           User               @relation("StoreOwner", fields: [ownerId], references: [id])
+  request         StoreRequest?      @relation("ApprovedStore", fields: [requestId], references: [id])
+  subscription    StoreSubscription? @relation("StoreSubscription")
   locations       StoreLocation[]
-  voucherRequests VoucherRequest[] @relation("StoreVoucherRequests")
-  vouchers        Voucher[]        @relation("StoreVouchers")
+  voucherRequests VoucherRequest[]   @relation("StoreVoucherRequests")
+  vouchers        Voucher[]          @relation("StoreVouchers")
 
   @@map("stores")
 }

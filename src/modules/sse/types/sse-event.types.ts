@@ -12,6 +12,12 @@ export type SSEEventType =
     | 'store_request_approved'
     | 'store_request_rejected'
     | 'gift_card_number'
+    | 'subscription_trial_ending'
+    | 'subscription_payment_required'
+    | 'subscription_payment_failed'
+    | 'subscription_activated'
+    | 'subscription_suspended'
+    | 'subscription_cancelled'
     | 'heartbeat';
 
 export interface SSEEvent {
