@@ -39,6 +39,7 @@ RUN npx prisma generate --schema=./prisma/schema
 
 # Copy built application from builder stage
 COPY --from=builder /usr/src/app/dist ./dist
+COPY --from=builder /usr/src/app/service_account.json ./service_account.json
 
 # Verify files were copied
 RUN ls -la dist/

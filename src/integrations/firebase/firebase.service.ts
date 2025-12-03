@@ -16,6 +16,7 @@ export class FirebaseService implements OnModuleInit {
     private readonly logger = new Logger(FirebaseService.name);
     private firebaseApp: admin.app.App;
 
+
     constructor(private configService: ConfigService) { }
 
     async onModuleInit() {
