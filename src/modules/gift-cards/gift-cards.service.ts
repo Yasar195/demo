@@ -7,6 +7,7 @@ import {
 } from './repositories';
 import { GiftCard, VoucherGiftCardMapping, UserGiftCard } from './entities';
 import { CreateGiftCardDto, AssignPositionGiftCardDto } from './dto';
+import { OrdersRepository } from '../orders/repositories';
 
 @Injectable()
 export class GiftCardsService extends BaseService<GiftCard> {
@@ -16,6 +17,7 @@ export class GiftCardsService extends BaseService<GiftCard> {
         private readonly giftCardRepository: GiftCardRepository,
         // private readonly mappingRepository: VoucherGiftCardMappingRepository,
         private readonly userGiftCardRepository: UserGiftCardRepository,
+        private readonly ordersRepository: OrdersRepository,
     ) {
         super(giftCardRepository);
     }
@@ -187,6 +189,15 @@ export class GiftCardsService extends BaseService<GiftCard> {
             deliveredAt: new Date(),
             expiresAt: giftCard.expiresAt,
         } as Partial<UserGiftCard>);
+    }
+
+    async getUserLoyaltyStreak(userId: string): Promise<{ streak: number }> {
+        try {
+            const streak = await this.ordersRepository.count({ userId })
+            return { streak };
+        } catch (error) {
+            this.handleError('getUserLoyaltyStreak', error);
+        }
     }
 
     /**

@@ -61,6 +61,12 @@ export class GiftCardsController {
         return this.giftCardsService.getAllGiftCards();
     }
 
+    @Get('loyalty/streak')
+    @Roles(UserRole.USER)
+    async getUserLoyaltyStreak(@CurrentUser() user: User) {
+        return this.giftCardsService.getUserLoyaltyStreak(user.id);
+    }
+
     // @Post('vouchers/:voucherId/default')
     // @Roles(UserRole.ADMIN)
     // async assignDefaultGiftCard(

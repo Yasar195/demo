@@ -5,6 +5,7 @@ import {
     GiftCardRepository,
     UserGiftCardRepository,
 } from './repositories';
+import { OrdersRepository } from '../orders/repositories';
 
 @Module({
     controllers: [GiftCardsController],
@@ -12,6 +13,7 @@ import {
         GiftCardsService,
         GiftCardRepository,
         UserGiftCardRepository,
+        OrdersRepository
     ],
     exports: [GiftCardsService], // Export for use in OrdersService
 })
