@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as fs from 'fs';
 import * as admin from 'firebase-admin';
 import * as path from 'path';
 
@@ -29,15 +30,19 @@ export class FirebaseService implements OnModuleInit {
 
             if (serviceAccountPath) {
                 try {
-                    const absolutePath = path.isAbsolute(serviceAccountPath)
-                        ? serviceAccountPath
-                        : path.join(process.cwd(), serviceAccountPath);
+                    const resolvedPath = this.resolveServiceAccountPath(serviceAccountPath);
+                    if (!resolvedPath) {
+                        this.logger.error(
+                            `Failed to locate Firebase service account file. Tried variants of: ${serviceAccountPath}`,
+                        );
+                        return;
+                    }
 
-                    const serviceAccount = require(absolutePath);
+                    const serviceAccount = require(resolvedPath);
                     this.firebaseApp = admin.initializeApp({
                         credential: admin.credential.cert(serviceAccount),
                     });
-                    this.logger.log(`Loaded Firebase credentials from: ${absolutePath}`);
+                    this.logger.log(`Loaded Firebase credentials from: ${resolvedPath}`);
                 } catch (error) {
                     this.logger.error('Failed to load Firebase service account file', error);
                     this.logger.error(`Ensure the file exists at: ${serviceAccountPath}`);
@@ -54,6 +59,27 @@ export class FirebaseService implements OnModuleInit {
         } catch (error) {
             this.logger.error('Failed to initialize Firebase Admin SDK', error);
         }
+    }
+
+    private resolveServiceAccountPath(serviceAccountPath: string): string | null {
+        const distRoot = path.resolve(__dirname, '..', '..');
+        const candidates = path.isAbsolute(serviceAccountPath)
+            ? [serviceAccountPath]
+            : [
+                path.resolve(process.cwd(), serviceAccountPath),
+                path.join(distRoot, serviceAccountPath),
+            ];
+
+        candidates.push(path.join(distRoot, 'service_account.json'));
+        candidates.push(path.join(process.cwd(), 'service_account.json'));
+
+        const found = candidates.find((candidate) => fs.existsSync(candidate));
+        if (!found) {
+            this.logger.error(`Service account file not found. Checked: ${candidates.join(', ')}`);
+            return null;
+        }
+
+        return found;
     }
 
     /**
