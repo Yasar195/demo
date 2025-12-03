@@ -10,7 +10,7 @@ import {
 import { RedisService } from '../../integrations/redis/redis.service';
 import { StoreRequestRepository, StoreRepository } from './repositories';
 import { StoreRequest, Store } from './entities';
-import { CreateStoreRequestDto, UpdateStoreRequestDto, ApproveStoreRequestDto, RejectStoreRequestDto, QueryStoreRequestDto, VendorDashboardStatsDto, VoucherStatsDto, RevenueStatsDto, StoreInfoDto } from './dto';
+import { CreateStoreRequestDto, UpdateStoreRequestDto, ApproveStoreRequestDto, RejectStoreRequestDto, QueryStoreRequestDto, VendorDashboardStatsDto, VoucherStatsDto, RevenueStatsDto, StoreInfoDto, QueryStoreDto } from './dto';
 import { StoreRequestStatus, UserRole, PaymentStatus } from '@prisma/client';
 import { UsersRepository } from '../users/repositories';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -555,6 +555,133 @@ export class StoreService {
      */
     private async getPendingVoucherRequests(storeId: string): Promise<number> {
         return this.voucherRequestRepository.countPendingByStoreId(storeId);
+    }
+
+    /**
+     * Get all stores with optional location filtering
+     */
+    async getAllStores(query: QueryStoreDto): Promise<{
+        data: any[];
+        total: number;
+        page: number;
+        totalPages: number;
+    }> {
+        try {
+            const cacheKey = `stores:all:${JSON.stringify(query)}`;
+            const cachedData = await this.redisService.get(cacheKey);
+
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+
+            const page = query.page ?? 1;
+            const limit = query.limit ?? 10;
+            const skip = (page - 1) * limit;
+
+            let result;
+
+            // If location is provided, use geospatial query
+            if (query.latitude && query.longitude) {
+                const radius = query.radius ?? 10; // Default 10km
+                const lat = query.latitude;
+                const lon = query.longitude;
+
+                // Haversine formula for distance calculation in PostgreSQL
+                // 6371 is Earth's radius in km
+                const rawQuery = `
+                    SELECT 
+                        s.id, 
+                        s.name, 
+                        s.description, 
+                        s.logo,
+                        sl.latitude,
+                        sl.longitude,
+                        sl.address,
+                        sl.city,
+                        (
+                            6371 * acos(
+                                cos(radians(${lat})) * cos(radians(sl.latitude)) * 
+                                cos(radians(sl.longitude) - radians(${lon})) + 
+                                sin(radians(${lat})) * sin(radians(sl.latitude))
+                            )
+                        ) AS distance
+                    FROM stores s
+                    JOIN store_locations sl ON s.id = sl.store_id
+                    WHERE sl.is_active = true
+                    AND sl."deletedAt" IS NULL
+                    AND s."deletedAt" IS NULL
+                    ${query.searchTerm ? `AND (s.name ILIKE '%${query.searchTerm}%' OR s.description ILIKE '%${query.searchTerm}%')` : ''}
+                    GROUP BY s.id, sl.id
+                    HAVING (
+                        6371 * acos(
+                            cos(radians(${lat})) * cos(radians(sl.latitude)) * 
+                            cos(radians(sl.longitude) - radians(${lon})) + 
+                            sin(radians(${lat})) * sin(radians(sl.latitude))
+                        )
+                    ) <= ${radius}
+                    ORDER BY distance ASC
+                    LIMIT ${limit} OFFSET ${skip}
+                `;
+
+                const countQuery = `
+                    SELECT COUNT(*) as total
+                    FROM stores s
+                    JOIN store_locations sl ON s.id = sl.store_id
+                    WHERE sl.is_active = true
+                    AND sl."deletedAt" IS NULL
+                    AND s."deletedAt" IS NULL
+                    ${query.searchTerm ? `AND (s.name ILIKE '%${query.searchTerm}%' OR s.description ILIKE '%${query.searchTerm}%')` : ''}
+                    AND (
+                        6371 * acos(
+                            cos(radians(${lat})) * cos(radians(sl.latitude)) * 
+                            cos(radians(sl.longitude) - radians(${lon})) + 
+                            sin(radians(${lat})) * sin(radians(sl.latitude))
+                        )
+                    ) <= ${radius}
+                `;
+
+                const [stores, countResult] = await Promise.all([
+                    this.prisma.$queryRawUnsafe(rawQuery),
+                    this.prisma.$queryRawUnsafe(countQuery),
+                ]);
+
+                const total = Number((countResult as any[])[0]?.total || 0);
+
+                result = {
+                    data: stores as any[],
+                    total,
+                    page,
+                    totalPages: Math.ceil(total / limit),
+                };
+            } else {
+                // Fallback to standard pagination if no location provided
+                const where: any = {};
+                if (query.searchTerm) {
+                    where.OR = [
+                        { name: { contains: query.searchTerm, mode: 'insensitive' } },
+                        { description: { contains: query.searchTerm, mode: 'insensitive' } },
+                    ];
+                }
+
+                const include = {
+                    locations: {
+                        where: {
+                            isActive: true,
+                            deletedAt: null,
+                        },
+                        take: 1, // Get at least one location
+                    },
+                };
+
+                result = await this.storeRepository.findWithPagination(page, limit, where, { createdAt: 'desc' }, include);
+            }
+
+            await this.redisService.set(cacheKey, JSON.stringify(result), 300); // Cache for 5 minutes
+            return result;
+
+        } catch (error) {
+            this.handleError('getAllStores', error);
+        }
     }
 
     /**

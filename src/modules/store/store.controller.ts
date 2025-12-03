@@ -16,6 +16,7 @@ import {
     ApproveStoreRequestDto,
     RejectStoreRequestDto,
     QueryStoreRequestDto,
+    QueryStoreDto,
     VendorDashboardStatsDto,
 } from './dto';
 import { JwtAuthGuard } from '../../iam/auth/guards/jwt-auth.guard';
@@ -31,6 +32,15 @@ import { PaginationDto } from 'src/common/dto';
 @UseGuards(JwtAuthGuard)
 export class StoreController {
     constructor(private readonly storeService: StoreService) { }
+
+    /**
+     * Get all stores (with optional location filtering)
+     */
+    @Get('stores')
+    async getAllStores(@Query() query: QueryStoreDto) {
+        const result = await this.storeService.getAllStores(query);
+        return BaseResponseDto.success(result, 'Stores retrieved successfully');
+    }
 
     /**
      * Get trending stores (Authenticated)
