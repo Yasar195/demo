@@ -52,11 +52,11 @@ export class AuthController {
         return this.authService.validateEmailForRegistration(dto.email);
     }
 
-    @Post('firebase/register')
-    @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute
-    async registerFirebase(@Body() dto: RegisterFirebaseDto) {
-        return this.authService.registerWithFirebase(dto);
-    }
+    // @Post('firebase/register')
+    // @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute
+    // async registerFirebase(@Body() dto: RegisterFirebaseDto) {
+    //     return this.authService.registerWithFirebase(dto);
+    // }
 
     @Post('firebase/login')
     @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute

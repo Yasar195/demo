@@ -175,39 +175,49 @@ export class AuthService {
 
     /**
      * Step 2: Complete Firebase user registration
-     * Creates user in Firebase and syncs to local database
+     * Creates user in Firebase, sends verification email, and syncs to local database
+     * Does NOT return tokens - user must verify email first
+     * 
+     * @deprecated This method is deprecated. Use frontend Firebase Client SDK for registration
+     * which automatically sends verification emails. Then call syncFirebaseUser() to sync the user.
      */
-    async registerWithFirebase(dto: RegisterFirebaseDto): Promise<AuthResult> {
-        try {
-            // Create user in Firebase
-            const firebaseUser = await this.firebaseService.createUser(
-                dto.email,
-                dto.password,
-                dto.name,
-            );
+    // async registerWithFirebase(dto: RegisterFirebaseDto): Promise<{ message: string; email: string }> {
+    //     try {
+    //         // Create user in Firebase
+    //         const firebaseUser = await this.firebaseService.createUser(
+    //             dto.email,
+    //             dto.password,
+    //             dto.name,
+    //         );
 
-            // Create/sync user in local database
-            const user = await this.usersService.upsertOAuthUser({
-                provider: 'firebase',
-                providerId: firebaseUser.uid,
-                email: firebaseUser.email!,
-                name: dto.name || firebaseUser.displayName || firebaseUser.email!,
-                avatarUrl: firebaseUser.photoURL,
-            });
+    //         // Generate and send email verification link
+    //         await this.firebaseService.generateEmailVerificationLink(dto.email);
 
-            // Generate JWT tokens
-            const tokens = await this.generateTokens(user);
-            return { user: this.sanitizeUser(user), tokens };
-        } catch (error) {
-            throw new UnauthorizedException(
-                error instanceof Error ? error.message : 'Registration failed',
-            );
-        }
-    }
+    //         // Create/sync user in local database
+    //         await this.usersService.upsertOAuthUser({
+    //             provider: 'firebase',
+    //             providerId: firebaseUser.uid,
+    //             email: firebaseUser.email!,
+    //             name: dto.name || firebaseUser.displayName || firebaseUser.email!,
+    //             avatarUrl: firebaseUser.photoURL,
+    //         });
+
+    //         // Return success message instead of tokens
+    //         return {
+    //             message: 'Registration successful. Please check your email to verify your account.',
+    //             email: dto.email,
+    //         };
+    //     } catch (error) {
+    //         throw new UnauthorizedException(
+    //             error instanceof Error ? error.message : 'Registration failed',
+    //         );
+    //     }
+    // }
 
     /**
      * Login with Firebase ID token
      * Verifies token and syncs/creates local user
+     * Requires email to be verified
      */
     async loginWithFirebase(idToken: string): Promise<AuthResult> {
         try {
@@ -218,6 +228,11 @@ export class AuthService {
             const firebaseUser = await this.firebaseService.getUserByUid(decodedToken.uid);
             if (!firebaseUser || !firebaseUser.email) {
                 throw new UnauthorizedException('Firebase user not found or missing email');
+            }
+
+            // Check if email is verified
+            if (!firebaseUser.emailVerified) {
+                throw new UnauthorizedException('Please verify your email before logging in');
             }
 
             // Create/sync user in local database
