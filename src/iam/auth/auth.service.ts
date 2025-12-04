@@ -173,14 +173,14 @@ export class AuthService {
         return this.firebaseService.validateEmail(email);
     }
 
-    /**
-     * Step 2: Complete Firebase user registration
-     * Creates user in Firebase, sends verification email, and syncs to local database
-     * Does NOT return tokens - user must verify email first
-     * 
-     * @deprecated This method is deprecated. Use frontend Firebase Client SDK for registration
-     * which automatically sends verification emails. Then call syncFirebaseUser() to sync the user.
-     */
+    // /**
+    //  * Step 2: Complete Firebase user registration
+    //  * Creates user in Firebase, sends verification email, and syncs to local database
+    //  * Does NOT return tokens - user must verify email first
+    //  * 
+    //  * @deprecated This method is deprecated. Use frontend Firebase Client SDK for registration
+    //  * which automatically sends verification emails. Then call syncFirebaseUser() to sync the user.
+    //  */
     // async registerWithFirebase(dto: RegisterFirebaseDto): Promise<{ message: string; email: string }> {
     //     try {
     //         // Create user in Firebase

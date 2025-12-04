@@ -1,167 +1,167 @@
 // Subscription related models
 model SubscriptionPlan {
-    id          String  @id @default(uuid())
-    name        String  @unique // "BASIC", "PREMIUM"
-    displayName String  @map("display_name") // "Basic Plan", "Premium Plan"
-    description String?
+  id          String  @id @default(uuid())
+  name        String  @unique // "BASIC", "PREMIUM"
+  displayName String  @map("display_name") // "Basic Plan", "Premium Plan"
+  description String?
 
-    // Pricing
-    price       Decimal  @db.Decimal(10, 2) // Monthly price
-    yearlyPrice Decimal? @map("yearly_price") @db.Decimal(10, 2) // Annual price (discounted)
-    currency    String   @default("INR")
+  // Pricing
+  price       Decimal  @db.Decimal(10, 2) // Monthly price
+  yearlyPrice Decimal? @map("yearly_price") @db.Decimal(10, 2) // Annual price (discounted)
+  currency    String   @default("INR")
 
-    // Billing
-    billingPeriod BillingPeriod @default(MONTHLY) @map("billing_period")
-    trialDays     Int           @default(14) @map("trial_days") // Free trial period
+  // Billing
+  billingPeriod BillingPeriod @default(MONTHLY) @map("billing_period")
+  trialDays     Int           @default(14) @map("trial_days") // Free trial period
 
-    // Feature Limits
-    maxVouchers       Int? @map("max_vouchers") // null = unlimited
-    maxLocations      Int? @map("max_locations")
-    maxActiveVouchers Int? @map("max_active_vouchers")
+  // Feature Limits
+  maxVouchers       Int? @map("max_vouchers") // null = unlimited
+  maxLocations      Int? @map("max_locations")
+  maxActiveVouchers Int? @map("max_active_vouchers")
 
-    // Features (boolean flags)
-    analyticsAccess      Boolean @default(false) @map("analytics_access")
-    prioritySupport      Boolean @default(false) @map("priority_support")
-    customBranding       Boolean @default(false) @map("custom_branding")
-    apiAccess            Boolean @default(false) @map("api_access")
-    bulkVoucherUpload    Boolean @default(false) @map("bulk_voucher_upload")
-    advancedReporting    Boolean @default(false) @map("advanced_reporting")
-    multiLocationSupport Boolean @default(true) @map("multi_location_support")
+  // Features (boolean flags)
+  analyticsAccess      Boolean @default(false) @map("analytics_access")
+  prioritySupport      Boolean @default(false) @map("priority_support")
+  customBranding       Boolean @default(false) @map("custom_branding")
+  apiAccess            Boolean @default(false) @map("api_access")
+  bulkVoucherUpload    Boolean @default(false) @map("bulk_voucher_upload")
+  advancedReporting    Boolean @default(false) @map("advanced_reporting")
+  multiLocationSupport Boolean @default(true) @map("multi_location_support")
 
-    // Status
-    isActive  Boolean @default(true) @map("is_active")
-    isVisible Boolean @default(true) @map("is_visible") // Show in pricing page
+  // Status
+  isActive  Boolean @default(true) @map("is_active")
+  isVisible Boolean @default(true) @map("is_visible") // Show in pricing page
 
-    // Metadata
-    sortOrder Int   @default(0) @map("sort_order") // Display order
-    features  Json? // Additional features as JSON
+  // Metadata
+  sortOrder Int   @default(0) @map("sort_order") // Display order
+  features  Json? // Additional features as JSON
 
-    createdAt DateTime @default(now()) @map("created_at")
-    updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-    // Relations
-    subscriptions StoreSubscription[]
+  // Relations
+  subscriptions StoreSubscription[]
 
-    @@map("subscription_plans")
+  @@map("subscription_plans")
 }
 
 model StoreSubscription {
-    id      String @id @default(uuid())
-    storeId String @unique @map("store_id") // One subscription per store
-    planId  String @map("plan_id")
+  id      String @id @default(uuid())
+  storeId String @unique @map("store_id") // One subscription per store
+  planId  String @map("plan_id")
 
-    // Subscription Status
-    status SubscriptionStatus @default(TRIAL)
+  // Subscription Status
+  status SubscriptionStatus @default(TRIAL)
 
-    // Billing Period
-    billingPeriod BillingPeriod @default(MONTHLY) @map("billing_period")
+  // Billing Period
+  billingPeriod BillingPeriod @default(MONTHLY) @map("billing_period")
 
-    // Dates
-    startDate          DateTime  @map("start_date")
-    currentPeriodStart DateTime  @map("current_period_start")
-    currentPeriodEnd   DateTime  @map("current_period_end")
-    trialStart         DateTime? @map("trial_start")
-    trialEnd           DateTime? @map("trial_end")
-    cancelledAt        DateTime? @map("cancelled_at")
-    cancelAtPeriodEnd  Boolean   @default(false) @map("cancel_at_period_end")
+  // Dates
+  startDate          DateTime  @map("start_date")
+  currentPeriodStart DateTime  @map("current_period_start")
+  currentPeriodEnd   DateTime  @map("current_period_end")
+  trialStart         DateTime? @map("trial_start")
+  trialEnd           DateTime? @map("trial_end")
+  cancelledAt        DateTime? @map("cancelled_at")
+  cancelAtPeriodEnd  Boolean   @default(false) @map("cancel_at_period_end")
 
-    // Pricing snapshot (in case plan changes)
-    subscribedPrice    Decimal @map("subscribed_price") @db.Decimal(10, 2)
-    subscribedCurrency String  @default("INR") @map("subscribed_currency")
+  // Pricing snapshot (in case plan changes)
+  subscribedPrice    Decimal @map("subscribed_price") @db.Decimal(10, 2)
+  subscribedCurrency String  @default("INR") @map("subscribed_currency")
 
-    // Renewal
-    autoRenew       Boolean   @default(true) @map("auto_renew")
-    nextBillingDate DateTime? @map("next_billing_date")
+  // Renewal
+  autoRenew       Boolean   @default(true) @map("auto_renew")
+  nextBillingDate DateTime? @map("next_billing_date")
 
-    // Grace period for failed payments
-    gracePeriodEnd DateTime? @map("grace_period_end")
+  // Grace period for failed payments
+  gracePeriodEnd DateTime? @map("grace_period_end")
 
-    createdAt DateTime  @default(now()) @map("created_at")
-    updatedAt DateTime  @updatedAt @map("updated_at")
-    deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
 
-    // Relations
-    store    Store                 @relation("StoreSubscription", fields: [storeId], references: [id])
-    plan     SubscriptionPlan      @relation(fields: [planId], references: [id])
-    payments SubscriptionPayment[]
-    history  SubscriptionHistory[]
+  // Relations
+  store    Store                 @relation("StoreSubscription", fields: [storeId], references: [id])
+  plan     SubscriptionPlan      @relation(fields: [planId], references: [id])
+  payments SubscriptionPayment[]
+  history  SubscriptionHistory[]
 
-    @@index([storeId], name: "sub_store_id_idx")
-    @@index([planId], name: "sub_plan_id_idx")
-    @@index([status], name: "sub_status_idx")
-    @@index([nextBillingDate], name: "sub_next_billing_idx")
-    @@map("store_subscriptions")
+  @@index([storeId], name: "sub_store_id_idx")
+  @@index([planId], name: "sub_plan_id_idx")
+  @@index([status], name: "sub_status_idx")
+  @@index([nextBillingDate], name: "sub_next_billing_idx")
+  @@map("store_subscriptions")
 }
 
 model SubscriptionPayment {
-    id             String @id @default(uuid())
-    subscriptionId String @map("subscription_id")
+  id             String @id @default(uuid())
+  subscriptionId String @map("subscription_id")
 
-    // Payment Details
-    amount   Decimal       @db.Decimal(10, 2)
-    currency String        @default("INR")
-    status   PaymentStatus @default(PENDING)
+  // Payment Details
+  amount   Decimal       @db.Decimal(10, 2)
+  currency String        @default("INR")
+  status   PaymentStatus @default(PENDING)
 
-    // Period covered by this payment
-    periodStart DateTime @map("period_start")
-    periodEnd   DateTime @map("period_end")
+  // Period covered by this payment
+  periodStart DateTime @map("period_start")
+  periodEnd   DateTime @map("period_end")
 
-    // Payment gateway details
-    paymentMethod     String? @map("payment_method") // "RAZORPAY", "STRIPE", etc.
-    transactionId     String? @unique @map("transaction_id")
-    paymentGatewayRef String? @map("payment_gateway_ref")
+  // Payment gateway details
+  paymentMethod     String? @map("payment_method") // "RAZORPAY", "STRIPE", etc.
+  transactionId     String? @unique @map("transaction_id")
+  paymentGatewayRef String? @map("payment_gateway_ref")
 
-    // Invoice
-    invoiceNumber String? @unique @map("invoice_number")
-    invoiceUrl    String? @map("invoice_url")
+  // Invoice
+  invoiceNumber String? @unique @map("invoice_number")
+  invoiceUrl    String? @map("invoice_url")
 
-    // Refund tracking
-    refundedAmount Decimal?  @map("refunded_amount") @db.Decimal(10, 2)
-    refundedAt     DateTime? @map("refunded_at")
-    refundReason   String?   @map("refund_reason")
+  // Refund tracking
+  refundedAmount Decimal?  @map("refunded_amount") @db.Decimal(10, 2)
+  refundedAt     DateTime? @map("refunded_at")
+  refundReason   String?   @map("refund_reason")
 
-    // Metadata
-    metadata Json?
+  // Metadata
+  metadata Json?
 
-    // Dates
-    paidAt    DateTime? @map("paid_at")
-    failedAt  DateTime? @map("failed_at")
-    createdAt DateTime  @default(now()) @map("created_at")
-    updatedAt DateTime  @updatedAt @map("updated_at")
+  // Dates
+  paidAt    DateTime? @map("paid_at")
+  failedAt  DateTime? @map("failed_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
-    // Relations
-    subscription StoreSubscription @relation(fields: [subscriptionId], references: [id])
+  // Relations
+  subscription StoreSubscription @relation(fields: [subscriptionId], references: [id])
 
-    @@index([subscriptionId], name: "sub_pay_subscription_id_idx")
-    @@index([status], name: "sub_pay_status_idx")
-    @@index([transactionId], name: "sub_pay_transaction_id_idx")
-    @@map("subscription_payments")
+  @@index([subscriptionId], name: "sub_pay_subscription_id_idx")
+  @@index([status], name: "sub_pay_status_idx")
+  @@index([transactionId], name: "sub_pay_transaction_id_idx")
+  @@map("subscription_payments")
 }
 
 model SubscriptionHistory {
-    id             String @id @default(uuid())
-    subscriptionId String @map("subscription_id")
+  id             String @id @default(uuid())
+  subscriptionId String @map("subscription_id")
 
-    // Change tracking
-    action     SubscriptionAction // CREATED, UPGRADED, DOWNGRADED, CANCELLED, RENEWED, etc.
-    fromPlanId String?             @map("from_plan_id")
-    toPlanId   String?             @map("to_plan_id")
-    fromStatus SubscriptionStatus? @map("from_status")
-    toStatus   SubscriptionStatus? @map("to_status")
+  // Change tracking
+  action     SubscriptionAction // CREATED, UPGRADED, DOWNGRADED, CANCELLED, RENEWED, etc.
+  fromPlanId String?             @map("from_plan_id")
+  toPlanId   String?             @map("to_plan_id")
+  fromStatus SubscriptionStatus? @map("from_status")
+  toStatus   SubscriptionStatus? @map("to_status")
 
-    // Who made the change
-    triggeredBy   String? @map("triggered_by") // User ID or "SYSTEM"
-    triggerReason String? @map("trigger_reason")
+  // Who made the change
+  triggeredBy   String? @map("triggered_by") // User ID or "SYSTEM"
+  triggerReason String? @map("trigger_reason")
 
-    // Additional context
-    metadata Json?
+  // Additional context
+  metadata Json?
 
-    createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
-    // Relations
-    subscription StoreSubscription @relation(fields: [subscriptionId], references: [id])
+  // Relations
+  subscription StoreSubscription @relation(fields: [subscriptionId], references: [id])
 
-    @@index([subscriptionId], name: "sub_hist_subscription_id_idx")
-    @@index([action], name: "sub_hist_action_idx")
-    @@map("subscription_history")
+  @@index([subscriptionId], name: "sub_hist_subscription_id_idx")
+  @@index([action], name: "sub_hist_action_idx")
+  @@map("subscription_history")
 }

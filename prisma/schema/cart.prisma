@@ -7,5 +7,11 @@ model Cart {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  user    User    @relation(fields: [userId], references: [id])
+  voucher Voucher @relation(fields: [voucherId], references: [id])
+
+  @@unique([userId, voucherId], name: "cart_user_voucher_unique")
+  @@index([userId], name: "cart_user_idx")
+  @@index([voucherId], name: "cart_voucher_idx")
   @@map("carts")
 }

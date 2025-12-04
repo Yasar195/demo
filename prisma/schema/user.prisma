@@ -23,6 +23,7 @@ model User {
   payments                Payment[]               @relation("UserPayments")
   purchasedVouchers       UserPurchasedVoucher[]  @relation("UserVouchers")
   giftCards               UserGiftCard[]          @relation("UserGiftCards")
+  carts                   Cart[]
 
   @@map("users")
 }

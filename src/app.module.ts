@@ -26,6 +26,7 @@ import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { RedisModule } from './integrations/redis';
 import { GiftCardsModule } from './modules/gift-cards/gift-cards.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { CartsModule } from './modules/carts/carts.module';
 
 @Module({
   imports: [
@@ -55,7 +56,8 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
     GiftCardsModule,
     SchedulerModule,
     IamModule,
-    SubscriptionsModule
+    SubscriptionsModule,
+    CartsModule
   ],
   controllers: [AppController],
   providers: [
