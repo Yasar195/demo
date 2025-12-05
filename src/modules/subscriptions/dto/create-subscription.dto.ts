@@ -8,4 +8,8 @@ export class CreateSubscriptionDto {
     @IsEnum(BillingPeriod)
     @IsOptional()
     billingPeriod?: BillingPeriod = BillingPeriod.MONTHLY;
+
+    @IsString()
+    @IsOptional()
+    paymentId?: string;
 }

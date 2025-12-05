@@ -86,7 +86,9 @@ export class SubscriptionsService {
     }
 
     /**
-     * Subscribe to a plan (starts trial)
+     * Subscribe to a plan
+     * - Free plans: activated immediately
+     * - Paid plans: requires paymentId and starts with trial or active status
      */
     async subscribe(storeId: string, userId: string, dto: CreateSubscriptionDto): Promise<StoreSubscription> {
         // Check if already has subscription
@@ -101,47 +103,115 @@ export class SubscriptionsService {
             throw new NotFoundException('Plan not found or inactive');
         }
 
-        // Calculate trial dates
+        const price = dto.billingPeriod === BillingPeriod.YEARLY ? plan.yearlyPrice : plan.price;
+        const isPaidPlan = price && Number(price) > 0;
+
+        // Validate payment for paid plans
+        if (isPaidPlan && !dto.paymentId) {
+            throw new BadRequestException('Payment ID is required for paid plans');
+        }
+
+        // Calculate dates
         const now = new Date();
         const trialEnd = new Date(now);
         trialEnd.setDate(trialEnd.getDate() + plan.trialDays);
 
-        const price = dto.billingPeriod === BillingPeriod.YEARLY ? plan.yearlyPrice : plan.price;
+        // Determine subscription status
+        // Free plans: activate immediately
+        // Paid plans with payment: activate immediately
+        // Paid plans without payment (shouldn't happen due to validation): start trial
+        const status = !isPaidPlan || dto.paymentId
+            ? SubscriptionStatus.ACTIVE
+            : SubscriptionStatus.TRIAL;
+
+        const subscriptionAction = !isPaidPlan
+            ? SubscriptionAction.CREATED
+            : dto.paymentId
+                ? SubscriptionAction.PAYMENT_SUCCEEDED
+                : SubscriptionAction.TRIAL_STARTED;
 
         // Create subscription
-        const subscription = await this.subscriptionRepository.create({
+        const subscriptionData: Partial<StoreSubscription> = {
             storeId,
             planId: plan.id,
-            status: SubscriptionStatus.TRIAL,
+            status,
             billingPeriod: dto.billingPeriod,
             startDate: now,
             currentPeriodStart: now,
-            currentPeriodEnd: trialEnd,
-            trialStart: now,
-            trialEnd,
-            subscribedPrice: price,
+            subscribedPrice: price || new (await import('@prisma/client')).Prisma.Decimal(0),
             subscribedCurrency: plan.currency,
             autoRenew: true,
-            nextBillingDate: trialEnd,
-        } as Partial<StoreSubscription>);
+        };
+
+        // Set period end and trial dates based on plan type
+        if (!isPaidPlan) {
+            // Free plan: set a very long period (e.g., 10 years)
+            const forever = new Date(now);
+            forever.setFullYear(forever.getFullYear() + 10);
+            subscriptionData.currentPeriodEnd = forever;
+            subscriptionData.nextBillingDate = null;
+        } else if (dto.paymentId) {
+            // Paid plan with payment: calculate next billing
+            const nextBilling = new Date(now);
+            if (dto.billingPeriod === BillingPeriod.YEARLY) {
+                nextBilling.setFullYear(nextBilling.getFullYear() + 1);
+            } else if (dto.billingPeriod === BillingPeriod.QUARTERLY) {
+                nextBilling.setMonth(nextBilling.getMonth() + 3);
+            } else {
+                nextBilling.setMonth(nextBilling.getMonth() + 1);
+            }
+            subscriptionData.currentPeriodEnd = nextBilling;
+            subscriptionData.nextBillingDate = nextBilling;
+        } else {
+            // Trial period
+            subscriptionData.currentPeriodEnd = trialEnd;
+            subscriptionData.trialStart = now;
+            subscriptionData.trialEnd = trialEnd;
+            subscriptionData.nextBillingDate = trialEnd;
+        }
+
+        const subscription = await this.subscriptionRepository.create(subscriptionData);
 
         // Create history
         await this.historyRepository.create({
             subscriptionId: subscription.id,
-            action: SubscriptionAction.TRIAL_STARTED,
+            action: subscriptionAction,
             toPlanId: plan.id,
-            toStatus: SubscriptionStatus.TRIAL,
+            toStatus: status,
             triggeredBy: userId,
         } as Partial<SubscriptionHistory>);
 
+        // Create payment record if paymentId provided
+        if (dto.paymentId && isPaidPlan) {
+            await this.paymentRepository.create({
+                subscriptionId: subscription.id,
+                amount: price,
+                currency: plan.currency,
+                status: PaymentStatus.COMPLETED,
+                periodStart: now,
+                periodEnd: subscriptionData.currentPeriodEnd,
+                paymentMethod: 'RAZORPAY', // Or get from dto
+                transactionId: dto.paymentId,
+                paidAt: now,
+            });
+        }
+
         // Send notification
+        const notificationMessage = !isPaidPlan
+            ? `Your free ${plan.displayName} plan has been activated!`
+            : dto.paymentId
+                ? `Your ${plan.displayName} subscription is now active!`
+                : `Your ${plan.displayName} trial has started. Enjoy ${plan.trialDays} days free!`;
+
         await this.notificationService.createNotification({
-            title: 'Trial Started',
-            message: `Your ${plan.displayName} trial has started. Enjoy ${plan.trialDays} days free!`,
+            title: !isPaidPlan ? 'Free Plan Activated' : dto.paymentId ? 'Subscription Activated' : 'Trial Started',
+            message: notificationMessage,
             userIds: [userId],
         });
 
-        this.logger.log(`Trial subscription created for store ${storeId}`);
+        this.logger.log(
+            `Subscription created for store ${storeId}: ${!isPaidPlan ? 'FREE' : dto.paymentId ? 'PAID' : 'TRIAL'}`
+        );
         return subscription;
     }
 
