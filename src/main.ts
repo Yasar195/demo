@@ -95,26 +95,10 @@ async function bootstrap() {
   // CORS
   app.enableCors();
 
-  // Seed default admin if database is empty
-  try {
-    const usersCount = await prismaService.user.count();
-    if (usersCount === 0) {
-      await prismaService.user.upsert({
-        where: { email: 'admin@sustify.com' },
-        update: {},
-        create: {
-          email: 'admin@sustify.com',
-          name: 'System Admin',
-          password: hashPassword('Admin@123'),
-          role: UserRole.ADMIN,
-          provider: 'local',
-        },
-      });
-      logger.log('Default admin user created (admin@sustify.com)');
-    }
-  } catch (error) {
-    logger.error('Failed to ensure default admin user', error as Error);
-  }
+  // Seed initial data
+  const { SeedService } = await import('./modules/seed/seed.service');
+  const seedService = app.get(SeedService);
+  await seedService.seedAll();
 
   // Start server
   const port = configService.get('APP_PORT') || 3000;

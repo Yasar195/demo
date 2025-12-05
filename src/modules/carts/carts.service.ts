@@ -3,7 +3,6 @@ import { CartRepository } from './repositories/cart.repository';
 import { VouchersRepository } from '../vouchers/repositories/vouchers.repository';
 import { AddToCartDto } from './dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
-// import { Cart, CartWithVoucher } from './entities';
 import { Cart } from '@prisma/client';
 import { RedisService } from '../../integrations/redis/redis.service';
 
