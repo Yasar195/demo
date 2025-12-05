@@ -29,6 +29,7 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
 import { CartsModule } from './modules/carts/carts.module';
 import { SeedModule } from './modules/seed/seed.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
+import { LocationsModule } from './modules/locations/locations.module';
 
 @Module({
   imports: [
@@ -61,7 +62,8 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
     SubscriptionsModule,
     CartsModule,
     SeedModule,
-    ReviewsModule
+    ReviewsModule,
+    LocationsModule
   ],
   controllers: [AppController],
   providers: [
