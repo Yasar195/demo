@@ -24,7 +24,7 @@ export class QueryVoucherDto extends PaginationDto {
 
     @IsOptional()
     @IsString()
-    storeId?: string;
+    locationId?: string;
 
     @IsOptional()
     @IsBoolean()

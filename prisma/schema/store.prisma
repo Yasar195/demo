@@ -23,7 +23,7 @@ model Store {
   subscription    StoreSubscription? @relation("StoreSubscription")
   locations       StoreLocation[]
   voucherRequests VoucherRequest[]   @relation("StoreVoucherRequests")
-  vouchers        Voucher[]          @relation("StoreVouchers")
+  vouchers        Voucher[]
 
   @@map("stores")
 }
@@ -105,7 +105,9 @@ model StoreLocation {
   deletedAt DateTime?
 
   // Relations
-  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  reviews  Review[]  @relation("LocationReviews")
+  vouchers Voucher[] @relation("LocationVouchers")
 
   @@index([latitude, longitude], name: "geo_location_idx")
   @@index([storeId], name: "store_id_idx")

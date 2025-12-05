@@ -1,0 +1,38 @@
+// Review category enum
+enum ReviewCategory {
+  CUSTOMER_EXPERIENCE
+  PRODUCT_QUALITY
+  VALUE_FOR_MONEY
+  AMBIANCE_CLEANLINESS
+}
+
+// Review model - one review per category per user per location
+model Review {
+  id String @id @default(uuid())
+
+  // Relations
+  userId     String @map("user_id")
+  locationId String @map("location_id")
+
+  // Category and rating
+  category ReviewCategory
+  rating   Int // 1-5 stars
+
+  // Review content
+  comment String? @db.Text
+
+  // Metadata
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  user     User          @relation("UserReviews", fields: [userId], references: [id])
+  location StoreLocation @relation("LocationReviews", fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, locationId, category])
+  @@index([locationId])
+  @@index([userId])
+  @@index([category])
+  @@map("reviews")
+}

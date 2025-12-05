@@ -45,7 +45,7 @@ export class VouchersService extends BaseService<Voucher> {
             const orderBy = query?.orderBy ?? VoucherOrderBy.NEWEST;
             const activeOnly = query?.activeOnly ?? false;
             const category = query?.category;
-            const storeId = query?.storeId;
+            const locationId = query?.locationId;
 
             // Build filters
             const filters: any = {};
@@ -56,8 +56,8 @@ export class VouchersService extends BaseService<Voucher> {
             if (category) {
                 filters.category = category;
             }
-            if (storeId) {
-                filters.storeId = storeId;
+            if (locationId) {
+                filters.locationId = locationId;
             }
 
             // Handle ordering based on the orderBy enum
@@ -503,7 +503,7 @@ export class VouchersService extends BaseService<Voucher> {
 
             // Create the voucher
             const voucher = await this.vouchersRepository.create({
-                storeId: request.storeId,
+                locationId: request.storeId, // TODO: VoucherRequest needs locationId field
                 requestId: id,
                 code: request.voucherCode,
                 name: request.voucherName,

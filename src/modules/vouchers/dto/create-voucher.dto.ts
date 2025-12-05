@@ -1,8 +1,11 @@
-import { IsString, IsNumber, IsOptional, IsBoolean, IsEnum, IsInt, Min, Max, IsUrl } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsBoolean, IsEnum, IsInt, Min, Max, IsUrl, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import { VoucherCategory } from '@prisma/client';
 
 export class CreateVoucherDto {
+    @IsUUID()
+    locationId: string;
+
     @IsString()
     code: string;
 

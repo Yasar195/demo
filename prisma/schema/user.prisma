@@ -24,6 +24,7 @@ model User {
   purchasedVouchers       UserPurchasedVoucher[]  @relation("UserVouchers")
   giftCards               UserGiftCard[]          @relation("UserGiftCards")
   carts                   Cart[]
+  reviews                 Review[]                @relation("UserReviews")
 
   @@map("users")
 }

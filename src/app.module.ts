@@ -28,6 +28,7 @@ import { GiftCardsModule } from './modules/gift-cards/gift-cards.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { CartsModule } from './modules/carts/carts.module';
 import { SeedModule } from './modules/seed/seed.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
 
 @Module({
   imports: [
@@ -59,7 +60,8 @@ import { SeedModule } from './modules/seed/seed.module';
     IamModule,
     SubscriptionsModule,
     CartsModule,
-    SeedModule
+    SeedModule,
+    ReviewsModule
   ],
   controllers: [AppController],
   providers: [

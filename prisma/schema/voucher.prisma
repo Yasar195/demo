@@ -1,8 +1,8 @@
 // Voucher related models
 model Voucher {
-  id        String  @id @default(uuid())
-  storeId   String  @map("store_id")
-  requestId String? @unique @map("request_id")
+  id         String  @id @default(uuid())
+  locationId String  @map("location_id")
+  requestId  String? @unique @map("request_id")
 
   // Core voucher information
   code         String  @unique
@@ -39,14 +39,16 @@ model Voucher {
   deletedAt DateTime? @map("deleted_at")
 
   // Relations
-  store              Store                  @relation("StoreVouchers", fields: [storeId], references: [id])
+  location           StoreLocation          @relation("LocationVouchers", fields: [locationId], references: [id], onDelete: Cascade)
   request            VoucherRequest?        @relation("ApprovedVoucher", fields: [requestId], references: [id])
   payments           Payment[]              @relation("VoucherPayments")
   purchasedInstances UserPurchasedVoucher[] @relation("PurchasedInstances")
   carts              Cart[]
   // giftCardMappings   VoucherGiftCardMapping[] @relation("VoucherGiftCards")
+  store              Store?                 @relation(fields: [storeId], references: [id])
+  storeId            String?
 
-  @@index([storeId], name: "voucher_store_idx")
+  @@index([locationId], name: "voucher_location_idx")
   @@index([category], name: "voucher_category_idx")
   @@index([isActive], name: "voucher_active_idx")
   @@map("vouchers")
