@@ -14,17 +14,19 @@ model User {
   updatedAt          DateTime  @updatedAt
   deletedAt          DateTime?
 
-  notification            NotificationRecipient[]
-  storeRequests           StoreRequest[]          @relation("UserStoreRequests")
-  reviewedRequests        StoreRequest[]          @relation("AdminReviews")
-  ownedStore              Store?                  @relation("StoreOwner")
-  deviceTokens            DeviceToken[]
-  reviewedVoucherRequests VoucherRequest[]        @relation("AdminVoucherReviews")
-  payments                Payment[]               @relation("UserPayments")
-  purchasedVouchers       UserPurchasedVoucher[]  @relation("UserVouchers")
-  giftCards               UserGiftCard[]          @relation("UserGiftCards")
-  carts                   Cart[]
-  reviews                 Review[]                @relation("UserReviews")
+  notification             NotificationRecipient[]
+  storeRequests            StoreRequest[]          @relation("UserStoreRequests")
+  reviewedRequests         StoreRequest[]          @relation("AdminReviews")
+  ownedStore               Store?                  @relation("StoreOwner")
+  deviceTokens             DeviceToken[]
+  reviewedVoucherRequests  VoucherRequest[]        @relation("AdminVoucherReviews")
+  payments                 Payment[]               @relation("UserPayments")
+  purchasedVouchers        UserPurchasedVoucher[]  @relation("UserVouchers")
+  giftCards                UserGiftCard[]          @relation("UserGiftCards")
+  carts                    Cart[]
+  reviews                  Review[]                @relation("UserReviews")
+  locationRequests         LocationRequest[]       @relation("UserLocationRequests")
+  reviewedLocationRequests LocationRequest[]       @relation("AdminLocationReviews")
 
   @@map("users")
 }

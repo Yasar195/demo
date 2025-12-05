@@ -15,15 +15,16 @@ model Store {
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  deletedAt DateTime? @map("deleted_at")
+  deletedAt DateTime?
 
   // Relations
-  owner           User               @relation("StoreOwner", fields: [ownerId], references: [id])
-  request         StoreRequest?      @relation("ApprovedStore", fields: [requestId], references: [id])
-  subscription    StoreSubscription? @relation("StoreSubscription")
-  locations       StoreLocation[]
-  voucherRequests VoucherRequest[]   @relation("StoreVoucherRequests")
-  vouchers        Voucher[]
+  owner            User               @relation("StoreOwner", fields: [ownerId], references: [id])
+  request          StoreRequest?      @relation("ApprovedStore", fields: [requestId], references: [id])
+  subscription     StoreSubscription? @relation("StoreSubscription")
+  locations        StoreLocation[]
+  voucherRequests  VoucherRequest[]   @relation("StoreVoucherRequests")
+  locationRequests LocationRequest[]  @relation("StoreLocationRequests")
+  vouchers         Voucher[]
 
   @@map("stores")
 }
@@ -40,12 +41,12 @@ model StoreRequest {
   storeEmail       String? @map("store_email")
   storePhone       String? @map("store_phone")
 
-  // First location details (required for store creation)
-  initialLocationData Json? @map("initial_location_data")
-
   // Additional information from user
   businessDocuments Json?   @map("business_documents") // URLs to uploaded documents
   additionalNotes   String? @map("additional_notes")
+
+  // Linked initial location request
+  initialLocationRequestId String? @unique @map("initial_location_request_id")
 
   // Request status
   status StoreRequestStatus @default(PENDING)
@@ -60,9 +61,10 @@ model StoreRequest {
   deletedAt DateTime?
 
   // Relations
-  user          User   @relation("UserStoreRequests", fields: [userId], references: [id])
-  reviewedBy    User?  @relation("AdminReviews", fields: [reviewedById], references: [id])
-  approvedStore Store? @relation("ApprovedStore")
+  user                   User             @relation("UserStoreRequests", fields: [userId], references: [id])
+  reviewedBy             User?            @relation("AdminReviews", fields: [reviewedById], references: [id])
+  approvedStore          Store?           @relation("ApprovedStore")
+  initialLocationRequest LocationRequest? @relation("InitialLocationRequest", fields: [initialLocationRequestId], references: [id])
 
   @@index([userId], name: "user_id_idx")
   @@index([status], name: "status_idx")
@@ -104,10 +106,15 @@ model StoreLocation {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime?
 
+  // Linked location request
+  requestId String? @unique @map("request_id")
+
   // Relations
-  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  reviews  Review[]  @relation("LocationReviews")
-  vouchers Voucher[] @relation("LocationVouchers")
+  store            Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  reviews          Review[]          @relation("LocationReviews")
+  vouchers         Voucher[]         @relation("LocationVouchers")
+  request          LocationRequest?  @relation("ApprovedLocation", fields: [requestId], references: [id])
+  locationRequests LocationRequest[]
 
   @@index([latitude, longitude], name: "geo_location_idx")
   @@index([storeId], name: "store_id_idx")

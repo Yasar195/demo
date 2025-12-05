@@ -3,6 +3,35 @@ import { Prisma } from '@prisma/client';
 
 export const DEFAULT_SUBSCRIPTION_PLANS: Prisma.SubscriptionPlanCreateInput[] = [
     {
+        name: 'FREE',
+        displayName: 'Free Plan',
+        description: 'Perfect for trying out the application',
+        price: new Prisma.Decimal(0),
+        yearlyPrice: new Prisma.Decimal(0),
+        currency: 'INR',
+        billingPeriod: BillingPeriod.MONTHLY,
+        trialDays: 14,
+
+        // Feature Limits
+        maxVouchers: 10,
+        maxLocations: 2,
+        maxActiveVouchers: 5,
+
+        // Features
+        analyticsAccess: true,
+        prioritySupport: false,
+        customBranding: false,
+        apiAccess: false,
+        bulkVoucherUpload: false,
+        advancedReporting: false,
+        multiLocationSupport: true,
+
+        // Status
+        isActive: true,
+        isVisible: true,
+        sortOrder: 1,
+    },
+    {
         name: 'BASIC',
         displayName: 'Basic Plan',
         description: 'Perfect for small businesses getting started with digital vouchers',

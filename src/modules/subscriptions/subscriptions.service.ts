@@ -98,7 +98,7 @@ export class SubscriptionsService {
         }
 
         // Get plan
-        const plan = await this.planRepository.findById(dto.planId);
+        const plan = await this.planRepository.findById(dto.planId as string);
         if (!plan || !plan.isActive) {
             throw new NotFoundException('Plan not found or inactive');
         }

@@ -1,0 +1,57 @@
+// Location Request Status Enum
+enum LocationRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+// Location Request Model
+model LocationRequest {
+  id      String  @id @default(uuid())
+  storeId String? @map("store_id") // Null during store registration
+  userId  String  @map("user_id")
+
+  // Location details
+  branchName     String? @map("branch_name")
+  isMainBranch   Boolean @default(false) @map("is_main_branch")
+  latitude       Float
+  longitude      Float
+  address        String
+  city           String
+  state          String?
+  country        String
+  postalCode     String? @map("postal_code")
+  phone          String?
+  email          String?
+  operatingHours Json?   @map("operating_hours")
+
+  // Request metadata
+  additionalNotes String? @map("additional_notes")
+
+  // Status
+  status LocationRequestStatus @default(PENDING)
+
+  // Admin review
+  reviewedById  String?   @map("reviewed_by_id")
+  reviewedAt    DateTime? @map("reviewed_at")
+  adminComments String?   @map("admin_comments")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  user             User           @relation("UserLocationRequests", fields: [userId], references: [id])
+  store            Store?         @relation("StoreLocationRequests", fields: [storeId], references: [id])
+  reviewedBy       User?          @relation("AdminLocationReviews", fields: [reviewedById], references: [id])
+  approvedLocation StoreLocation? @relation("ApprovedLocation")
+  storeRequests    StoreRequest[] @relation("InitialLocationRequest")
+  storeLocation    StoreLocation? @relation(fields: [storeLocationId], references: [id])
+  storeLocationId  String?
+
+  @@index([userId])
+  @@index([storeId])
+  @@index([status])
+  @@map("location_requests")
+}

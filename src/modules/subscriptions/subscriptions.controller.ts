@@ -72,7 +72,7 @@ export class SubscriptionsController {
             return BaseResponseDto.error('No store found. Please create a store first.');
         }
 
-        dto.planId = planId; // Override with param
+        dto.planId = planId; // Use param value
         const subscription = await this.subscriptionsService.subscribe(store.id, user.id, dto);
         return BaseResponseDto.success(subscription, 'Trial started successfully');
     }

@@ -36,8 +36,9 @@ model SubscriptionPlan {
   sortOrder Int   @default(0) @map("sort_order") // Display order
   features  Json? // Additional features as JSON
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
 
   // Relations
   subscriptions StoreSubscription[]
@@ -128,6 +129,7 @@ model SubscriptionPayment {
   failedAt  DateTime? @map("failed_at")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
 
   // Relations
   subscription StoreSubscription @relation(fields: [subscriptionId], references: [id])
@@ -156,7 +158,9 @@ model SubscriptionHistory {
   // Additional context
   metadata Json?
 
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
 
   // Relations
   subscription StoreSubscription @relation(fields: [subscriptionId], references: [id])

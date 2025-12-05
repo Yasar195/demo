@@ -34,52 +34,52 @@ export class StoreRequestRepository extends PrismaRepository<StoreRequest> {
     /**
      * Find store requests with pagination and filters
      */
-    async findWithFilters(
-        page: number,
-        limit: number,
-        filters: {
-            status?: StoreRequestStatus;
-            userId?: string;
-            searchTerm?: string;
-        },
-        orderBy?: Record<string, 'asc' | 'desc'>,
-    ): Promise<{ data: StoreRequest[]; total: number; page: number; totalPages: number }> {
-        const where: any = {};
+    // async findWithFilters(
+    //     page: number,
+    //     limit: number,
+    //     filters: {
+    //         status?: StoreRequestStatus;
+    //         userId?: string;
+    //         searchTerm?: string;
+    //     },
+    //     orderBy?: Record<string, 'asc' | 'desc'>,
+    // ): Promise<{ data: StoreRequest[]; total: number; page: number; totalPages: number }> {
+    //     const where: any = {};
 
-        if (filters.status) {
-            where.status = filters.status;
-        }
+    //     if (filters.status) {
+    //         where.status = filters.status;
+    //     }
 
-        if (filters.userId) {
-            where.userId = filters.userId;
-        }
+    //     if (filters.userId) {
+    //         where.userId = filters.userId;
+    //     }
 
-        if (filters.searchTerm) {
-            where.OR = [
-                { storeName: { contains: filters.searchTerm, mode: 'insensitive' } },
-                { storeEmail: { contains: filters.searchTerm, mode: 'insensitive' } },
-            ];
-        }
+    //     if (filters.searchTerm) {
+    //         where.OR = [
+    //             { storeName: { contains: filters.searchTerm, mode: 'insensitive' } },
+    //             { storeEmail: { contains: filters.searchTerm, mode: 'insensitive' } },
+    //         ];
+    //     }
 
-        const include = {
-            user: {
-                select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                },
-            },
-            reviewedBy: {
-                select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                },
-            },
-        };
+    //     const include = {
+    //         user: {
+    //             select: {
+    //                 id: true,
+    //                 name: true,
+    //                 email: true,
+    //             },
+    //         },
+    //         reviewedBy: {
+    //             select: {
+    //                 id: true,
+    //                 name: true,
+    //                 email: true,
+    //             },
+    //         },
+    //     };
 
-        return this.findWithPagination(page, limit, where, orderBy, include);
-    }
+    //     return this.findWithPagination(page, limit, where, orderBy, include);
+    // }
 
     /**
      * Check if user has any pending request

@@ -68,10 +68,11 @@ model UserGiftCard {
   usedAt DateTime? @map("used_at")
 
   // Timestamps
-  deliveredAt DateTime @default(now()) @map("delivered_at")
-  expiresAt   DateTime @map("expires_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  deliveredAt DateTime  @default(now()) @map("delivered_at")
+  expiresAt   DateTime  @map("expires_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
 
   // Relations
   user     User     @relation("UserGiftCards", fields: [userId], references: [id])

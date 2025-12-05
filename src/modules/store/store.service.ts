@@ -73,9 +73,21 @@ export class StoreService {
                 userIds: admins.map((admin) => admin.id),
             });
 
+            // Create initial location request
+            const locationRequest = await this.prisma.locationRequest.create({
+                data: {
+                    userId,
+                    ...dto.initialLocationData,
+                    status: 'PENDING',
+                },
+            });
+
+            // Create store request and link to location request
+            const { initialLocationData, ...storeRequestData } = dto;
             const request = await this.storeRequestRepository.create({
                 userId,
-                ...dto,
+                ...storeRequestData,
+                initialLocationRequestId: locationRequest.id,
                 status: StoreRequestStatus.PENDING,
             } as Partial<StoreRequest>);
 
@@ -274,17 +286,26 @@ export class StoreService {
             const sortBy = query.sortBy ?? 'createdAt';
             const sortOrder: 'asc' | 'desc' = query.sortOrder?.toLowerCase() === 'asc' ? 'asc' : 'desc';
 
-            const filters = {
-                status: query.status,
-                userId: query.userId,
-                searchTerm: query.searchTerm,
-            };
+            // Build where clause
+            const where: any = {};
+            if (query.status) {
+                where.status = query.status;
+            }
+            if (query.userId) {
+                where.userId = query.userId;
+            }
+            if (query.searchTerm) {
+                where.OR = [
+                    { storeName: { contains: query.searchTerm, mode: 'insensitive' } },
+                    { storeDescription: { contains: query.searchTerm, mode: 'insensitive' } },
+                ];
+            }
 
             const orderBy = {
                 [sortBy]: sortOrder,
             };
 
-            const result = await this.storeRequestRepository.findWithFilters(page, limit, filters, orderBy);
+            const result = await this.storeRequestRepository.findWithPagination(page, limit, where, orderBy);
 
             await this.redisService.set(cacheKey, JSON.stringify(result), 300); // Cache for 5 minutes
 
@@ -335,6 +356,46 @@ export class StoreService {
                 phone: request.storePhone,
             } as Partial<Store>);
 
+            // Get and approve the linked location request
+            if (request.initialLocationRequestId) {
+                const locationRequest = await this.prisma.locationRequest.findUnique({
+                    where: { id: request.initialLocationRequestId },
+                });
+
+                if (locationRequest) {
+                    // Update location request to approved
+                    await this.prisma.locationRequest.update({
+                        where: { id: locationRequest.id },
+                        data: {
+                            status: 'APPROVED',
+                            storeId: store.id,
+                            reviewedById: adminId,
+                            reviewedAt: new Date(),
+                        },
+                    });
+
+                    // Create the actual location
+                    await this.prisma.storeLocation.create({
+                        data: {
+                            storeId: store.id,
+                            requestId: locationRequest.id,
+                            branchName: locationRequest.branchName || `${request.storeName} - Main Branch`,
+                            isMainBranch: locationRequest.isMainBranch,
+                            latitude: locationRequest.latitude,
+                            longitude: locationRequest.longitude,
+                            address: locationRequest.address,
+                            city: locationRequest.city,
+                            state: locationRequest.state,
+                            country: locationRequest.country,
+                            postalCode: locationRequest.postalCode,
+                            phone: locationRequest.phone,
+                            email: locationRequest.email,
+                            operatingHours: locationRequest.operatingHours as any,
+                            isActive: true,
+                        },
+                    });
+                }
+            }
 
             const user = await this.userRepository.findById(request.userId);
 
