@@ -12,7 +12,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { User } from '../users/entities/user.entity';
+import { User } from '@prisma/client';
 import { GiftCardsService } from './gift-cards.service';
 import {
     CreateGiftCardDto,

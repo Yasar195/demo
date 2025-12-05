@@ -1,15 +1,2 @@
-export class VoucherGiftCardMapping {
-    id: string;
-    voucherId: string;
-    giftCardId: string;
-
-    // Position mapping
-    position?: number | null;
-    isDefault: boolean;
-
-    // Tracking
-    isDelivered: boolean;
-
-    createdAt: Date;
-    updatedAt: Date;
-}
+// Placeholder type for future voucher-to-gift-card mappings
+export type VoucherGiftCardMapping = unknown;

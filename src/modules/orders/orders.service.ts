@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { RedisService } from '../../integrations/redis/redis.service';
 import { OrdersRepository } from './repositories';
 import { PaginationDto } from '../../common/dto/pagination.dto';
-import { Order } from './entities';
+import { UserPurchasedVoucherWithRelations } from './entities/order.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { PrismaService } from '../../database/prisma.service';
 import { S3Service } from '../../integrations/s3/s3.service';
@@ -29,7 +29,7 @@ export class OrdersService {
     async getUserOrders(
         userId: string,
         pagination?: PaginationDto
-    ): Promise<{ data: Order[]; total: number; page: number; totalPages: number }> {
+    ): Promise<{ data: UserPurchasedVoucherWithRelations[]; total: number; page: number; totalPages: number }> {
         try {
             const cacheKey = `orders:user:${userId}:${JSON.stringify(pagination || {})}`;
             const cachedData = await this.redisService.get(cacheKey);
@@ -89,7 +89,7 @@ export class OrdersService {
     /**
      * Get a specific order by ID
      */
-    async getUserOrderById(userId: string, orderId: string): Promise<Order> {
+    async getUserOrderById(userId: string, orderId: string): Promise<UserPurchasedVoucherWithRelations> {
         try {
             const cacheKey = `orders:${orderId}`;
             const cachedData = await this.redisService.get(cacheKey);
@@ -126,7 +126,7 @@ export class OrdersService {
     /**
      * Create a new order (buy voucher)
      */
-    async createOrder(userId: string, dto: CreateOrderDto): Promise<Order> {
+    async createOrder(userId: string, dto: CreateOrderDto): Promise<UserPurchasedVoucherWithRelations> {
         // 1. Verify payment
         const payment = await this.prisma.payment.findFirst({
             where: { id: dto.paymentId, userId },
@@ -214,7 +214,7 @@ export class OrdersService {
     /**
      * Redeem a voucher using its instance code
      */
-    async redeemVoucher(userId: string, instanceCode: string, quantityToRedeem: number = 1): Promise<Order> {
+    async redeemVoucher(userId: string, instanceCode: string, quantityToRedeem: number = 1): Promise<UserPurchasedVoucherWithRelations> {
         // Find the voucher by instance code
         const order = await this.ordersRepository.findByInstanceCode(instanceCode);
 
@@ -287,7 +287,7 @@ export class OrdersService {
     /**
      * Send SSE events for voucher redemption
      */
-    private sendRedemptionEvents(order: Order, scannerId: string, buyerId: string, totalOders: number): void {
+    private sendRedemptionEvents(order: UserPurchasedVoucherWithRelations, scannerId: string, buyerId: string, totalOders: number): void {
         const eventData = {
             orderId: order.id,
             instanceCode: order.instanceCode,
@@ -325,7 +325,7 @@ export class OrdersService {
     /**
      * Generate QR code and upload to S3
      */
-    private async generateAndUploadQR(order: Order, userId: string): Promise<string> {
+    private async generateAndUploadQR(order: UserPurchasedVoucherWithRelations, userId: string): Promise<string> {
         const qrData = JSON.stringify({
             orderId: order.id,
             instanceCode: order.instanceCode,

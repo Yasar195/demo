@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaRepository } from '../../../database/repositories/prisma.repository';
 import { PrismaService } from '../../../database/prisma.service';
-import { Order } from '../entities/order.entity';
+import { UserPurchasedVoucherWithRelations } from '../entities/order.entity';
 
 @Injectable()
-export class OrdersRepository extends PrismaRepository<Order> {
+export class OrdersRepository extends PrismaRepository<UserPurchasedVoucherWithRelations> {
     constructor(prisma: PrismaService) {
         super(prisma, 'userPurchasedVoucher');
     }
@@ -23,7 +23,7 @@ export class OrdersRepository extends PrismaRepository<Order> {
             discount: number;
             expiresAt: Date;
         }
-    ): Promise<Order> {
+    ): Promise<UserPurchasedVoucherWithRelations> {
         return await this.prisma.$transaction(async (tx) => {
             // 1. Atomic update to decrement both available and reserved quantities
             // For the voucher purchase flow:
@@ -72,7 +72,7 @@ export class OrdersRepository extends PrismaRepository<Order> {
                 },
             });
 
-            return order as unknown as Order;
+            return order as unknown as UserPurchasedVoucherWithRelations;
         });
     }
 
@@ -89,7 +89,7 @@ export class OrdersRepository extends PrismaRepository<Order> {
     /**
      * Find a purchased voucher by instance code
      */
-    async findByInstanceCode(instanceCode: string): Promise<Order | null> {
+    async findByInstanceCode(instanceCode: string): Promise<UserPurchasedVoucherWithRelations | null> {
         return this.model.findUnique({
             where: { instanceCode },
             include: {
@@ -100,13 +100,13 @@ export class OrdersRepository extends PrismaRepository<Order> {
                 },
                 payment: true
             }
-        }) as Promise<Order | null>;
+        }) as Promise<UserPurchasedVoucherWithRelations | null>;
     }
 
     /**
      * Redeem a voucher by updating quantity used and status
      */
-    async redeemVoucher(orderId: string, quantityToRedeem: number): Promise<Order> {
+    async redeemVoucher(orderId: string, quantityToRedeem: number): Promise<UserPurchasedVoucherWithRelations> {
         return await this.prisma.$transaction(async (tx) => {
             // Get the current order state
             const order = await tx.userPurchasedVoucher.findUnique({
@@ -146,7 +146,7 @@ export class OrdersRepository extends PrismaRepository<Order> {
                 },
             });
 
-            return updatedOrder as unknown as Order;
+            return updatedOrder as unknown as UserPurchasedVoucherWithRelations;
         });
     }
 }

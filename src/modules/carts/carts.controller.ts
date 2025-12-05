@@ -5,7 +5,7 @@ import { BaseResponseDto } from '../../common/dto/base-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../../iam/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { User } from '../users/entities/user.entity';
+import { User } from '@prisma/client';
 
 @Controller('carts')
 @UseGuards(JwtAuthGuard)

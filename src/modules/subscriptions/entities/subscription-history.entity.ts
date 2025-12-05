@@ -1,20 +1,3 @@
-export interface SubscriptionHistory {
-    id: string;
-    subscriptionId: string;
+import { SubscriptionHistory as PrismaSubscriptionHistory } from '@prisma/client';
 
-    // Change tracking
-    action: string;
-    fromPlanId?: string;
-    toPlanId?: string;
-    fromStatus?: string;
-    toStatus?: string;
-
-    // Who made the change
-    triggeredBy?: string;
-    triggerReason?: string;
-
-    // Additional context
-    metadata?: any;
-
-    createdAt: Date;
-}
+export type SubscriptionHistory = PrismaSubscriptionHistory;

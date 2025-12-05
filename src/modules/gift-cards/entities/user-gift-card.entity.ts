@@ -1,21 +1,9 @@
-export class UserGiftCard {
-    id: string;
-    userId: string;
-    giftCardId: string;
-    // userPurchasedVoucherId: string;
+import { Prisma, UserGiftCard as PrismaUserGiftCard } from '@prisma/client';
 
-    // Delivery details
-    // purchasePosition: number;
-    scratchCode: string | null;
-    isRevealed: boolean;
+export type UserGiftCard = PrismaUserGiftCard;
 
-    // Status
-    isUsed: boolean;
-    usedAt: Date | null;
-
-    // Timestamps
-    deliveredAt: Date;
-    expiresAt: Date;
-    createdAt: Date;
-    updatedAt: Date;
-}
+export type UserGiftCardWithGift = Prisma.UserGiftCardGetPayload<{
+    include: {
+        giftCard: true;
+    };
+}>;

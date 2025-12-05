@@ -5,7 +5,7 @@ import {
     // VoucherGiftCardMappingRepository,
     UserGiftCardRepository,
 } from './repositories';
-import { GiftCard, VoucherGiftCardMapping, UserGiftCard } from './entities';
+import { GiftCard, UserGiftCard } from '@prisma/client';
 import { CreateGiftCardDto, AssignPositionGiftCardDto } from './dto';
 import { OrdersRepository } from '../orders/repositories';
 
@@ -205,7 +205,7 @@ export class GiftCardsService extends BaseService<GiftCard> {
      */
     async getUserGiftCards(userId: string): Promise<UserGiftCard[]> {
         try {
-            return await this.userGiftCardRepository.findByUserId(userId);
+            return await this.userGiftCardRepository.findByCondition({ userId }, { giftCard: true });
         } catch (error) {
             this.handleError('getUserGiftCards', error);
         }
