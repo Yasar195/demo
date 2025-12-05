@@ -2,10 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { LocationsRepository } from './repositories';
 import { QueryLocationsDto } from './dto';
 import { StoreLocation } from '@prisma/client';
+import { RedisService } from '../../integrations/redis/redis.service';
 
 @Injectable()
 export class LocationsService {
-    constructor(private readonly locationsRepository: LocationsRepository) { }
+    constructor(
+        private readonly locationsRepository: LocationsRepository,
+        private readonly redisService: RedisService,
+    ) { }
 
     /**
      * Get all locations with store details and optional vouchers
@@ -20,6 +24,14 @@ export class LocationsService {
             includeVouchers = true,
             voucherOrderBy,
         } = query;
+
+        // Create cache key based on query parameters
+        const cacheKey = `locations:all:${JSON.stringify(query)}`;
+        const cachedData = await this.redisService.get(cacheKey);
+
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
 
         const skip = (page - 1) * limit;
 
@@ -40,7 +52,7 @@ export class LocationsService {
             }),
         ]);
 
-        return {
+        const result = {
             locations,
             pagination: {
                 page,
@@ -49,6 +61,11 @@ export class LocationsService {
                 pages: Math.ceil(total / limit),
             },
         };
+
+        // Cache for 5 minutes
+        await this.redisService.set(cacheKey, JSON.stringify(result), 300);
+
+        return result;
     }
 
     /**
