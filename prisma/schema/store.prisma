@@ -97,7 +97,8 @@ model StoreLocation {
   email String?
 
   // Operating hours (can be stored as JSON)
-  operatingHours Json? @map("operating_hours")
+  operatingHours Json?   @map("operating_hours")
+  image          String? // Location image URL/path
 
   // Status
   isActive Boolean @default(true) @map("is_active")

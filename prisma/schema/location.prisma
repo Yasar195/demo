@@ -25,6 +25,7 @@ model LocationRequest {
   phone          String?
   email          String?
   operatingHours Json?   @map("operating_hours")
+  image          String? // Location image URL/path
 
   // Request metadata
   additionalNotes String? @map("additional_notes")

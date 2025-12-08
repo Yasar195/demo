@@ -46,5 +46,9 @@ export class CreateLocationRequestDto {
 
     @IsOptional()
     @IsString()
+    image?: string;
+
+    @IsOptional()
+    @IsString()
     additionalNotes?: string;
 }

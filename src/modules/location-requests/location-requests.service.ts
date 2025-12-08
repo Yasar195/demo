@@ -181,6 +181,7 @@ export class LocationRequestsService {
                 phone: request.phone,
                 email: request.email,
                 operatingHours: request.operatingHours as any,
+                image: request.image,
                 isActive: true,
             },
         });
