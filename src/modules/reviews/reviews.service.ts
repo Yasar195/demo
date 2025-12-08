@@ -151,4 +151,21 @@ export class ReviewsService {
             },
         });
     }
+
+    /**
+     * Get location review averages by category (common function for other modules)
+     */
+    async getLocationReviewAverages(locationId: string) {
+        const [categoryAverages, overallAverage, totalReviews] = await Promise.all([
+            this.reviewsRepository.getLocationAverages(locationId),
+            this.reviewsRepository.getOverallAverage(locationId),
+            this.reviewsRepository.countByLocationId(locationId),
+        ]);
+
+        return {
+            categoryAverages,
+            overallAverage,
+            totalReviews,
+        };
+    }
 }

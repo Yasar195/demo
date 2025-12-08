@@ -3,12 +3,14 @@ import { LocationsRepository } from './repositories';
 import { QueryLocationsDto } from './dto';
 import { StoreLocation } from '@prisma/client';
 import { RedisService } from '../../integrations/redis/redis.service';
+import { ReviewsService } from '../reviews/reviews.service';
 
 @Injectable()
 export class LocationsService {
     constructor(
         private readonly locationsRepository: LocationsRepository,
         private readonly redisService: RedisService,
+        private readonly reviewsService: ReviewsService,
     ) { }
 
     /**
@@ -52,8 +54,19 @@ export class LocationsService {
             }),
         ]);
 
+        // Fetch review averages for each location
+        const locationsWithReviews = await Promise.all(
+            locations.map(async (location) => {
+                const reviewStats = await this.reviewsService.getLocationReviewAverages(location.id);
+                return {
+                    ...location,
+                    reviews: reviewStats,
+                };
+            })
+        );
+
         const result = {
-            locations,
+            locations: locationsWithReviews,
             pagination: {
                 page,
                 limit,
