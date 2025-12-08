@@ -30,6 +30,7 @@ import { CartsModule } from './modules/carts/carts.module';
 import { SeedModule } from './modules/seed/seed.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { LocationsModule } from './modules/locations/locations.module';
+import { LocationRequestsModule } from './modules/location-requests/location-requests.module';
 
 @Module({
   imports: [
