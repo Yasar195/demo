@@ -64,7 +64,8 @@ import { LocationRequestsModule } from './modules/location-requests/location-req
     CartsModule,
     SeedModule,
     ReviewsModule,
-    LocationsModule
+    LocationsModule,
+    LocationRequestsModule
   ],
   controllers: [AppController],
   providers: [
