@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import { PrismaRepository } from '../../../database/repositories/prisma.repository';
 import { StoreLocation, Prisma } from '@prisma/client';
-import { VoucherOrderBy } from '../dto';
+import { VoucherOrderBy, LocationOrderBy } from '../dto';
 
 @Injectable()
 export class LocationsRepository extends PrismaRepository<StoreLocation> {
@@ -19,6 +19,7 @@ export class LocationsRepository extends PrismaRepository<StoreLocation> {
         activeOnly?: boolean;
         includeVouchers?: boolean;
         voucherOrderBy?: VoucherOrderBy;
+        orderBy?: LocationOrderBy;
         skip?: number;
         take?: number;
     }) {
@@ -61,7 +62,7 @@ export class LocationsRepository extends PrismaRepository<StoreLocation> {
             include,
             skip: options?.skip,
             take: options?.take,
-            orderBy: { createdAt: 'desc' },
+            orderBy: this.getLocationOrderBy(options?.orderBy),
         });
     }
 
@@ -140,6 +141,19 @@ export class LocationsRepository extends PrismaRepository<StoreLocation> {
                 // For now, default to newest
                 return { createdAt: 'desc' as const };
             case VoucherOrderBy.NEWEST:
+            default:
+                return { createdAt: 'desc' as const };
+        }
+    }
+
+    /**
+     * Get location order by clause based on enum
+     */
+    private getLocationOrderBy(orderBy?: LocationOrderBy) {
+        switch (orderBy) {
+            case LocationOrderBy.OLDEST:
+                return { createdAt: 'asc' as const };
+            case LocationOrderBy.NEWEST:
             default:
                 return { createdAt: 'desc' as const };
         }

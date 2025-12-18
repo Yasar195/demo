@@ -1,1 +1,1 @@
-export { QueryLocationsDto, VoucherOrderBy } from './query-locations.dto';
+export { QueryLocationsDto, VoucherOrderBy, LocationOrderBy } from './query-locations.dto';

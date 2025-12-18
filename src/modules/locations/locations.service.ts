@@ -25,6 +25,7 @@ export class LocationsService {
             activeOnly = true,
             includeVouchers = true,
             voucherOrderBy,
+            orderBy,
         } = query;
 
         // Create cache key based on query parameters
@@ -44,6 +45,7 @@ export class LocationsService {
                 activeOnly,
                 includeVouchers,
                 voucherOrderBy,
+                orderBy,
                 skip,
                 take: limit,
             }),

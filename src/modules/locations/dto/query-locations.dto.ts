@@ -12,7 +12,16 @@ export enum VoucherOrderBy {
     LOWEST_PRICE = 'lowest_price',
 }
 
+export enum LocationOrderBy {
+    NEWEST = 'newest',
+    OLDEST = 'oldest',
+}
+
 export class QueryLocationsDto extends PaginationDto {
+    @IsOptional()
+    @IsEnum(LocationOrderBy)
+    orderBy?: LocationOrderBy = LocationOrderBy.NEWEST;
+
     @IsOptional()
     @IsString()
     city?: string;
