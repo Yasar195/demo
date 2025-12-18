@@ -26,6 +26,8 @@ export class LocationsService {
             includeVouchers = true,
             voucherOrderBy,
             orderBy,
+            latitude,
+            longitude,
         } = query;
 
         // Create cache key based on query parameters
@@ -46,6 +48,8 @@ export class LocationsService {
                 includeVouchers,
                 voucherOrderBy,
                 orderBy,
+                latitude,
+                longitude,
                 skip,
                 take: limit,
             }),
