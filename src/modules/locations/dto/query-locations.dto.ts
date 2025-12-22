@@ -53,5 +53,5 @@ export class QueryLocationsDto extends PaginationDto {
     @IsOptional()
     @IsBoolean()
     @Type(() => Boolean)
-    includeVouchers?: boolean = true;
+    includeVouchers?: boolean = false;
 }

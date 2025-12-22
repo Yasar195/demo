@@ -23,7 +23,7 @@ export class LocationsService {
             city,
             storeId,
             activeOnly = true,
-            includeVouchers = true,
+            includeVouchers = false,
             voucherOrderBy,
             orderBy,
             latitude,
