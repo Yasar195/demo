@@ -1,6 +1,6 @@
 # Sustify Backend
 
-Fast, scalable, type-safe NestJS backend following SOLID principles and Clean Architecture.
+Fast, scalable, type-safe NestJS backend following SOLID principles, Design patterns and Clean Architecture.
 
 ## 🚀 Features
 
