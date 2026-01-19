@@ -8,9 +8,10 @@ import { User } from '../../modules/users/entities/user.entity';
 import { hashPassword } from '../../common/utils/crypto.utils';
 import { FirebaseService } from '../../integrations/firebase/firebase.service';
 import { RegisterFirebaseDto } from './dto/register-firebase.dto';
+import { StoreRepository } from 'src/modules/store/repositories';
 
 type AuthTokens = { accessToken: string; refreshToken: string };
-type AuthResult = { user: Omit<User, 'password'>; tokens: AuthTokens };
+type AuthResult = { user: Omit<User, 'password'>; tokens: AuthTokens, store: boolean };
 
 @Injectable()
 export class AuthService {
@@ -21,6 +22,7 @@ export class AuthService {
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService,
         private readonly firebaseService: FirebaseService,
+        private readonly storeRepository: StoreRepository,
     ) {
         this.googleClient = new OAuth2Client(this.configService.get<string>('google.clientId'));
     }
@@ -49,7 +51,12 @@ export class AuthService {
         }
 
         const tokens = await this.generateTokens(user);
-        return { user: this.sanitizeUser(user), tokens };
+
+        const store = await this.storeRepository.findByCondition({
+            ownerId: user.id,
+            deletedAt: null
+        })
+        return { user: this.sanitizeUser(user), tokens, store: store ? true : false };
     }
 
     async getProfile(userId: string): Promise<Omit<User, 'password'>> {
@@ -121,8 +128,12 @@ export class AuthService {
             avatarUrl: profile.avatarUrl,
         });
 
+        const store = await this.storeRepository.findByCondition({
+            ownerId: user.id,
+            deletedAt: null
+        })
         const tokens = await this.generateTokens(user);
-        return { user: this.sanitizeUser(user), tokens };
+        return { user: this.sanitizeUser(user), tokens, store: store ? true : false };
     }
 
     private sanitizeUser(user: User): Omit<User, 'password'> {
@@ -246,7 +257,13 @@ export class AuthService {
 
             // Generate JWT tokens
             const tokens = await this.generateTokens(user);
-            return { user: this.sanitizeUser(user), tokens };
+
+            const store = await this.storeRepository.findByCondition({
+                ownerId: user.id,
+                deletedAt: null
+            })
+
+            return { user: this.sanitizeUser(user), tokens, store: store ? true : false };
         } catch (error) {
             throw new UnauthorizedException(
                 error instanceof Error ? error.message : 'Firebase authentication failed',
