@@ -56,7 +56,7 @@ export class AuthService {
             ownerId: user.id,
             deletedAt: null
         })
-        return { user: this.sanitizeUser(user), tokens, store: store ? true : false };
+        return { user: this.sanitizeUser(user), tokens, store: store.length > 0 };
     }
 
     async getProfile(userId: string): Promise<Omit<User, 'password'>> {
@@ -133,7 +133,7 @@ export class AuthService {
             deletedAt: null
         })
         const tokens = await this.generateTokens(user);
-        return { user: this.sanitizeUser(user), tokens, store: store ? true : false };
+        return { user: this.sanitizeUser(user), tokens, store: store.length > 0 };
     }
 
     private sanitizeUser(user: User): Omit<User, 'password'> {
@@ -263,7 +263,7 @@ export class AuthService {
                 deletedAt: null
             })
 
-            return { user: this.sanitizeUser(user), tokens, store: store ? true : false };
+            return { user: this.sanitizeUser(user), tokens, store: store.length > 0 };
         } catch (error) {
             throw new UnauthorizedException(
                 error instanceof Error ? error.message : 'Firebase authentication failed',
