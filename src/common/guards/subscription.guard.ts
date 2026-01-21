@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger, MethodNotAllowedException } from '@nestjs/common';
 import { SubscriptionsService } from '../../modules/subscriptions/subscriptions.service';
 import { StoreRepository } from '../../modules/store/repositories/store.repository';
 import { SubscriptionStatus } from '@prisma/client';
@@ -35,8 +35,8 @@ export class SubscriptionGuard implements CanActivate {
         const subscription = await this.subscriptionsService.getStoreSubscription(store.id);
 
         if (!subscription) {
-            throw new ForbiddenException({
-                statusCode: 403,
+            throw new MethodNotAllowedException({
+                statusCode: 405,
                 message: 'No subscription found. Please subscribe to a plan to access your store.',
                 error: 'NO_SUBSCRIPTION',
             });
