@@ -89,7 +89,6 @@ export abstract class PrismaRepository<T> extends BaseRepository<T> {
     }
 
     async findOneByCondition(condition: Partial<T>, include?: Record<string, boolean | { select?: any; where?: any; include?: any }>): Promise<T | null> {
-        console.log(condition)
         return this.model.findFirst({
             where: {
                 ...condition,

@@ -39,8 +39,18 @@ export class SubscriptionsController {
      * Get available plans (Public - skip auth and subscription checks)
      */
     @Get('plans')
-    async getPlans() {
+    async getPlans(@CurrentUser() user: User) {
+        const store = await this.storeRepository.findOneByCondition({ ownerId: user.id }, { subscription: { select: { planId: true } } });
         const plans = await this.subscriptionsService.getAvailablePlans();
+        if (store) {
+            plans.forEach((plan: any) => {
+                if (plan.id === (store as any).subscription.planId) {
+                    plan.isSubscribed = true;
+                } else {
+                    plan.isSubscribed = false;
+                }
+            });
+        }
         return BaseResponseDto.success(plans, 'Plans retrieved successfully');
     }
 
