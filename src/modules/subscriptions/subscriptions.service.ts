@@ -16,6 +16,7 @@ import { SubscriptionPlan, StoreSubscription, SubscriptionHistory } from './enti
 import { SubscriptionStatus, SubscriptionAction, BillingPeriod, PaymentStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SseService } from '../sse/sse.service';
+import { RedisService } from 'src/integrations/redis';
 
 @Injectable()
 export class SubscriptionsService {
@@ -28,13 +29,23 @@ export class SubscriptionsService {
         private readonly historyRepository: SubscriptionHistoryRepository,
         private readonly notificationService: NotificationsService,
         private readonly sseService: SseService,
+        private readonly redisService: RedisService,
     ) { }
 
     /**
      * Get all active plans (Public)
      */
     async getAvailablePlans(): Promise<SubscriptionPlan[]> {
-        return this.planRepository.getActivePlans();
+        const cacheKey = `plans:all`;
+        const cachedData = await this.redisService.get(cacheKey);
+
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+
+        const plans = await this.planRepository.getActivePlans();
+        await this.redisService.set(cacheKey, JSON.stringify(plans), 60 * 60 * 24);
+        return plans;
     }
 
     /**
