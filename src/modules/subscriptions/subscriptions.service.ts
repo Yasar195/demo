@@ -252,6 +252,18 @@ export class SubscriptionsService {
 
         const oldPlanId = subscription.planId;
         const newPrice = subscription.billingPeriod === BillingPeriod.YEARLY ? newPlan.yearlyPrice : newPlan.price;
+        const isPaidPlan = newPrice && Number(newPrice) > 0;
+
+        if (isPaidPlan && !dto.paymentId) {
+            throw new BadRequestException('Payment ID is required for paid plan upgrades');
+        }
+
+        if (dto.paymentId && isPaidPlan) {
+            const existingPayment = await this.paymentRepository.findByTransactionId(dto.paymentId);
+            if (existingPayment) {
+                throw new BadRequestException('Payment ID has already been used');
+            }
+        }
 
         // Update subscription
         const updated = await this.subscriptionRepository.update(subscription.id, {
@@ -268,6 +280,21 @@ export class SubscriptionsService {
             triggeredBy: userId,
             triggerReason: dto.reason,
         } as Partial<SubscriptionHistory>);
+
+        if (dto.paymentId && isPaidPlan) {
+            const now = new Date();
+            await this.paymentRepository.create({
+                subscriptionId: subscription.id,
+                amount: newPrice,
+                currency: newPlan.currency,
+                status: PaymentStatus.COMPLETED,
+                periodStart: now,
+                periodEnd: subscription.currentPeriodEnd,
+                // paymentMethod: 'RAZORPAY',
+                transactionId: dto.paymentId,
+                paidAt: now,
+            });
+        }
 
         await this.redisService.reset(`plans:all:${userId}`);
 

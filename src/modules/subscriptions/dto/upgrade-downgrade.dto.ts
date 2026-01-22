@@ -7,4 +7,8 @@ export class UpgradeDowngradeDto {
     @IsOptional()
     @IsString()
     reason?: string;
+
+    @IsOptional()
+    @IsString()
+    paymentId?: string;
 }
