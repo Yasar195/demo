@@ -68,6 +68,24 @@ export class SubscriptionsController {
         return BaseResponseDto.success(subscription, 'Subscription retrieved successfully');
     }
 
+
+    /**
+     * Upgrade plan
+     */
+    @Post('upgrade/')
+    async upgrade(
+        @CurrentUser() user: User,
+        @Body() dto: UpgradeDowngradeDto,
+    ) {
+        const store = await this.storeRepository.findOneByCondition({ ownerId: user.id });
+        if (!store) {
+            return BaseResponseDto.error('No store found');
+        }
+        
+        const subscription = await this.subscriptionsService.upgradePlan(store.id, user.id, dto);
+        return BaseResponseDto.success(subscription, 'Plan upgraded successfully');
+    }
+
     /**
      * Subscribe to a plan (starts trial)
      */
@@ -85,25 +103,6 @@ export class SubscriptionsController {
         dto.planId = planId; // Use param value
         const subscription = await this.subscriptionsService.subscribe(store.id, user.id, dto);
         return BaseResponseDto.success(subscription, 'Trial started successfully');
-    }
-
-    /**
-     * Upgrade plan
-     */
-    @Post('upgrade/:planId')
-    async upgrade(
-        @CurrentUser() user: User,
-        @Param('planId') planId: string,
-        @Body() dto: UpgradeDowngradeDto,
-    ) {
-        const store = await this.storeRepository.findOneByCondition({ ownerId: user.id });
-        if (!store) {
-            return BaseResponseDto.error('No store found');
-        }
-
-        dto.newPlanId = planId;
-        const subscription = await this.subscriptionsService.upgradePlan(store.id, user.id, dto);
-        return BaseResponseDto.success(subscription, 'Plan upgraded successfully');
     }
 
     /**
