@@ -41,7 +41,7 @@ export class SubscriptionsController {
     @Get('plans')
     async getPlans(@CurrentUser() user: User) {
         const store = await this.storeRepository.findOneByCondition({ ownerId: user.id }, { subscription: { select: { planId: true } } });
-        const plans = await this.subscriptionsService.getAvailablePlans();
+        const plans = await this.subscriptionsService.getAvailablePlans(user);
         if (store) {
             plans.forEach((plan: any) => {
                 if (plan.id === (store as any).subscription.planId) {

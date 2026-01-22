@@ -13,7 +13,7 @@ import {
 } from './repositories';
 import { CreateSubscriptionDto, UpgradeDowngradeDto, CancelSubscriptionDto } from './dto';
 import { SubscriptionPlan, StoreSubscription, SubscriptionHistory } from './entities';
-import { SubscriptionStatus, SubscriptionAction, BillingPeriod, PaymentStatus } from '@prisma/client';
+import { SubscriptionStatus, SubscriptionAction, BillingPeriod, PaymentStatus, User } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SseService } from '../sse/sse.service';
 import { RedisService } from 'src/integrations/redis';
@@ -35,8 +35,8 @@ export class SubscriptionsService {
     /**
      * Get all active plans (Public)
      */
-    async getAvailablePlans(): Promise<SubscriptionPlan[]> {
-        const cacheKey = `plans:all`;
+    async getAvailablePlans(user: User): Promise<SubscriptionPlan[]> {
+        const cacheKey = `plans:all:${user.id}`;
         const cachedData = await this.redisService.get(cacheKey);
 
         if (cachedData) {
@@ -60,6 +60,7 @@ export class SubscriptionsService {
      */
     async createPlan(planData: Partial<SubscriptionPlan>): Promise<SubscriptionPlan> {
         const plan = await this.planRepository.create(planData);
+        await this.redisService.reset('plans:all:*');
         this.logger.log(`New subscription plan created: ${plan.name}`);
         return plan;
     }
@@ -69,6 +70,7 @@ export class SubscriptionsService {
      */
     async updatePlan(planId: string, updates: Partial<SubscriptionPlan>): Promise<SubscriptionPlan | null> {
         const plan = await this.planRepository.update(planId, updates);
+        await this.redisService.reset('plans:all:*');
         this.logger.log(`Subscription plan updated: ${planId}`);
         return plan;
     }
@@ -267,6 +269,8 @@ export class SubscriptionsService {
             triggerReason: dto.reason,
         } as Partial<SubscriptionHistory>);
 
+        await this.redisService.reset(`plans:all:${userId}`);
+
         // Send notification and SSE
         await this.notificationService.createNotification({
             title: 'Plan Upgraded',
@@ -313,6 +317,8 @@ export class SubscriptionsService {
             triggeredBy: userId,
             triggerReason: dto.reason,
         } as Partial<SubscriptionHistory>);
+
+        await this.redisService.reset(`plans:all:${userId}`);
 
         await this.notificationService.createNotification({
             title: 'Plan Downgrade Scheduled',
@@ -373,6 +379,8 @@ export class SubscriptionsService {
             ? 'Your subscription has been cancelled'
             : 'Your subscription will be cancelled at the end of the billing period';
 
+        await this.redisService.reset(`plans:all:${userId}`);
+
         await this.notificationService.createNotification({
             title: 'Subscription Cancelled',
             message,
@@ -399,6 +407,8 @@ export class SubscriptionsService {
                 cancelAtPeriodEnd: false,
                 autoRenew: true,
             } as Partial<StoreSubscription>);
+
+            await this.redisService.reset(`plans:all:${userId}`);
 
             await this.historyRepository.create({
                 subscriptionId: subscription.id,
