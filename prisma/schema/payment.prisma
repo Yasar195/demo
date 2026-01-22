@@ -8,7 +8,7 @@ model Payment {
   // Transaction details
   amount        Float         @map("amount") // Amount paid
   currency      String        @default("INR") // Currency code
-  paymentMethod PaymentMethod @map("payment_method")
+  // paymentMethod PaymentMethod @map("payment_method")
   status        PaymentStatus @default(PENDING)
 
   // Payment gateway details

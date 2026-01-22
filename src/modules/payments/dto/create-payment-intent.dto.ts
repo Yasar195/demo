@@ -28,6 +28,6 @@ export class CreatePaymentIntentDto {
     @IsOptional()
     targetId: string;
 
-    @IsString()
-    paymentMethod: 'CREDIT_CARD' | 'DEBIT_CARD' | 'UPI' | 'NET_BANKING' | 'WALLET' | 'CASH' | 'OTHER';
+    // @IsString()
+    // paymentMethod: 'CREDIT_CARD' | 'DEBIT_CARD' | 'UPI' | 'NET_BANKING' | 'WALLET' | 'CASH' | 'OTHER';
 }

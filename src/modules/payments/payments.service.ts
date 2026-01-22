@@ -72,7 +72,7 @@ export class PaymentsService {
                         HttpStatus.BAD_REQUEST,
                     );
                 }  
-                 
+
                 const voucher = await this.paymentsRepository.findById(dto.targetId);
 
                 if (!voucher) {
@@ -118,7 +118,7 @@ export class PaymentsService {
                         purpose: dto.purpose,
                         transactionId: paymentIntent.id,
                         paymentGateway: 'STRIPE',
-                        paymentMethod: dto.paymentMethod as any,
+                        // paymentMethod: dto.paymentMethod as any,
                         metadata: dto.metadata as any,
                         voucherId: dto.targetId,
                         quantityReserved: quantity,
@@ -148,7 +148,7 @@ export class PaymentsService {
                     purpose: dto.purpose,
                     transactionId: paymentIntent.id,
                     paymentGateway: 'STRIPE',
-                    paymentMethod: dto.paymentMethod as any,
+                    // paymentMethod: dto.paymentMethod as any,
                     metadata: dto.metadata as any,
                 } as any);
 
