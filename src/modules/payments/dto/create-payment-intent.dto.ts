@@ -25,6 +25,7 @@ export class CreatePaymentIntentDto {
     purpose: PaymentPurpose;
 
     @IsString()
+    @IsOptional()
     targetId: string;
 
     @IsString()

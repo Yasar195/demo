@@ -63,6 +63,16 @@ export class PaymentsService {
 
             // For voucher purchases, reserve stock first
             if (dto.purpose === 'VOUCHER') {
+                if(!dto.targetId) {
+                    throw new HttpException(
+                        {
+                            message: 'Payment intent creation failed',
+                            error: 'Target ID (voucher ID) is required for voucher purchases',
+                        },
+                        HttpStatus.BAD_REQUEST,
+                    );
+                }  
+                 
                 const voucher = await this.paymentsRepository.findById(dto.targetId);
 
                 if (!voucher) {

@@ -71,6 +71,7 @@ enum VoucherCategory {
 
 enum PaymentPurpose {
   VOUCHER
+  PLAN
 }
 
 enum BillingPeriod {
