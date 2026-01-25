@@ -3,7 +3,7 @@ import { Observable } from 'rxjs';
 import { SseService } from './sse.service';
 import { JwtAuthGuard } from '../../iam/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { User } from '../users/entities/user.entity';
+import { User } from '@prisma/client';
 
 interface MessageEvent {
     data: string | object;

@@ -17,8 +17,10 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
-import { User } from '../users/entities/user.entity';
+import { User } from '@prisma/client';
 import { SubscriptionGuard } from '../../common/guards/subscription.guard';
+import { SoldVoucherDto } from './dto/sold-voucher.dto';
+import { MyVoucherDto } from './dto/my-voucher.dto';
 
 @Controller('voucher-requests')
 @UseGuards(JwtAuthGuard)
@@ -30,6 +32,12 @@ export class VoucherRequestController {
     async findAll(@Query() query: QueryVoucherDto) {
         const result = await this.vouchersService.findAllPaginated(query);
         return BaseResponseDto.success(result, 'Vouchers retrieved successfully');
+    }
+
+    @Get('/vouchers/sold') 
+    async findSoldVouchers( @CurrentUser() user: User, @Query() query: SoldVoucherDto) {
+        const result = await this.vouchersService.findSoldVouchers(query, user);
+        return BaseResponseDto.success(result, 'Sold vouchers retrieved successfully');
     }
 
     @Get('/vouchers/:id')
@@ -82,9 +90,9 @@ export class VoucherRequestController {
     @UseGuards(SubscriptionGuard)
     async getUserVoucherRequests(
         @CurrentUser() user: User,
-        @Query() pagination: PaginationDto,
+        @Query() dto: MyVoucherDto,
     ) {
-        const requests = await this.vouchersService.getUserVoucherRequests(user.id, pagination);
+        const requests = await this.vouchersService.getUserVoucherRequests(user.id, dto);
         return BaseResponseDto.success(requests, 'Voucher requests retrieved successfully');
     }
 

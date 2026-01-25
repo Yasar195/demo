@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, HttpException, InternalServerErrorException, BadRequestException, Logger } from '@nestjs/common';
 import { RedisService } from '../../integrations/redis/redis.service';
 import { BaseService } from '../../core/abstracts/base.service';
-import { User } from './entities/user.entity';
+import { User } from '@prisma/client';
 import { UsersRepository } from './repositories/users.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';

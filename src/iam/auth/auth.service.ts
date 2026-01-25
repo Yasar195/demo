@@ -4,10 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { OAuth2Client, TokenPayload } from 'google-auth-library';
 import { StringValue } from 'ms';
 import { UsersService } from '../../modules/users/users.service';
-import { User } from '../../modules/users/entities/user.entity';
+import { User } from '@prisma/client';
 import { hashPassword } from '../../common/utils/crypto.utils';
 import { FirebaseService } from '../../integrations/firebase/firebase.service';
-import { RegisterFirebaseDto } from './dto/register-firebase.dto';
 import { StoreRepository } from 'src/modules/store/repositories';
 
 type AuthTokens = { accessToken: string; refreshToken: string };

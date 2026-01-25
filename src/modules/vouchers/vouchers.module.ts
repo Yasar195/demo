@@ -10,6 +10,7 @@ import { NotificationsRepository, DeviceTokenRepository } from '../notifications
 import { SseModule } from '../sse/sse.module';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { StoreSubscriptionRepository, SubscriptionHistoryRepository, SubscriptionPaymentRepository, SubscriptionPlanRepository } from '../subscriptions/repositories';
+import { UserPurchasedRepository } from '../users/repositories/user.purchased.repository';
 
 @Module({
     imports: [SseModule],
@@ -27,7 +28,8 @@ import { StoreSubscriptionRepository, SubscriptionHistoryRepository, Subscriptio
         SubscriptionPlanRepository,
         StoreSubscriptionRepository,
         SubscriptionPaymentRepository,
-        SubscriptionHistoryRepository
+        SubscriptionHistoryRepository,
+        UserPurchasedRepository
     ],
     exports: [VouchersService, VouchersRepository, VoucherRequestRepository],
 })

@@ -5,7 +5,7 @@ import { BaseResponseDto } from '../../common/dto/base-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from 'src/iam/auth/guards/jwt-auth.guard';
-import { User } from './entities/user.entity';
+import { User } from '@prisma/client';
 
 @Controller('users')
 export class UsersController {

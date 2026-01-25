@@ -3,7 +3,7 @@ import { NotificationsService } from "./notifications.service";
 import { JwtAuthGuard } from "src/iam/auth/guards/jwt-auth.guard";
 import { CurrentUser } from "src/common/decorators";
 import { BaseResponseDto, PaginationDto } from "src/common/dto";
-import { User } from "../users/entities/user.entity";
+import { User } from "@prisma/client";
 import { RegisterDeviceTokenDto } from "./dto/notifications.dto";
 
 @Controller('notifications')

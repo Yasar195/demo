@@ -6,12 +6,15 @@ import { Voucher } from './entities/voucher.entity';
 import { VoucherRequest } from './entities/voucher-request.entity';
 import { CreateVoucherDto, UpdateVoucherDto, CreateVoucherRequestDto, UpdateVoucherRequestDto, QueryVoucherRequestDto, ApproveVoucherRequestDto, RejectVoucherRequestDto, QueryVoucherDto, VoucherOrderBy } from './dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
-import { UserRole, VoucherRequestStatus } from '@prisma/client';
+import { Prisma, User, UserRole, VoucherRequestStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersRepository } from '../users/repositories';
 import { StoreRepository } from '../store/repositories';
 import { SseService } from '../sse/sse.service';
 import { RedisService } from '../../integrations/redis/redis.service';
+import { SoldVoucherDto } from './dto/sold-voucher.dto';
+import { UserPurchasedRepository } from '../users/repositories/user.purchased.repository';
+import { MyVoucherDto } from './dto/my-voucher.dto';
 
 @Injectable()
 export class VouchersService extends BaseService<Voucher> {
@@ -25,6 +28,7 @@ export class VouchersService extends BaseService<Voucher> {
         private readonly notificationsService: NotificationsService,
         private readonly sseService: SseService,
         private readonly redisService: RedisService,
+        private readonly userPurchasedRepository: UserPurchasedRepository,
     ) {
         super(vouchersRepository);
     }
@@ -101,7 +105,73 @@ export class VouchersService extends BaseService<Voucher> {
             this.handleError('findAllPaginated', error);
         }
     }
-    /**
+
+    async findSoldVouchers(dto: SoldVoucherDto, user: User): Promise<{ data: any[]; total: number; page: number; totalPages: number }> {
+        try {
+            const store = await this.storeRepository.findOneByCondition({ ownerId: user.id });
+            if (!store) {
+                throw new NotFoundException('Store not found');
+            }
+
+            const cacheKey = `vouchers:sold:${store.id}:${JSON.stringify(dto || {})}`;
+            const cachedData = await this.redisService.get(cacheKey);
+            if (cachedData) {
+                return JSON.parse(cachedData);
+            }
+
+            const page = dto?.page ?? 1;
+            const limit = dto?.limit ?? 10;
+            const sortBy = dto?.sortBy ?? 'createdAt';
+            const sortOrder: 'asc' | 'desc' = dto?.sortOrder?.toLowerCase() === 'desc' ? 'desc' : 'asc';
+            const orderBy = { [sortBy]: sortOrder };
+
+            const result = await this.userPurchasedRepository.findWithPagination(
+                page,
+                limit,
+                { voucher: { storeId: store.id } },
+                orderBy,
+                {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            avatarUrl: true,
+                        },
+                    },
+                    voucher: {
+                        select: {
+                            id: true,
+                            name: true,
+                            code: true,
+                            image: true,
+                            sellingPrice: true,
+                            faceValue: true,
+                            discount: true,
+                            expiresAt: true,
+                        },
+                    },
+                    payment: {
+                        select: {
+                            id: true,
+                            amount: true,
+                            status: true,
+                            completedAt: true,
+                            transactionId: true,
+                        },
+                    },
+                },
+            );
+
+            await this.redisService.set(cacheKey, JSON.stringify(result), 300); // Cache for 5 minutes
+
+            return result;
+        } catch (error) {
+            this.handleError('findSoldVouchers', error);
+        }
+    }
+
+    /*
      * Create a new voucher
      */
     async createVoucher(dto: CreateVoucherDto): Promise<Voucher> {
@@ -264,7 +334,7 @@ export class VouchersService extends BaseService<Voucher> {
     /**
      * Get user's voucher requests (Store owner)
      */
-    async getUserVoucherRequests(userId: string, pagination: PaginationDto): Promise<{ data: VoucherRequest[]; total: number; page: number; totalPages: number }> {
+    async getUserVoucherRequests(userId: string, pagination: MyVoucherDto): Promise<{ data: VoucherRequest[]; total: number; page: number; totalPages: number }> {
         try {
             // Check if user has a store
             const store = await this.storeRepository.findOneByCondition({ ownerId: userId });
@@ -288,7 +358,7 @@ export class VouchersService extends BaseService<Voucher> {
                 return JSON.parse(cachedData);
             }
 
-            const result = await this.voucherRequestRepository.findWithPagination(page, limit, { storeId: store.id }, orderBy);
+            const result = await this.voucherRequestRepository.findWithPagination(page, limit, { storeId: store.id, status: pagination.status }, orderBy);
 
             await this.redisService.set(cacheKey, JSON.stringify(result), 3600); // Cache for 1 hour
 

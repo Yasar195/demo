@@ -4,7 +4,7 @@ import { AuthService } from './auth.service';
 import { GoogleTokenDto } from './dto/google-token.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { User } from '../../modules/users/entities/user.entity';
+import { User } from '@prisma/client';
 import { LoginDto } from './dto/login.dto';
 import { ValidateEmailDto } from './dto/validate-email.dto';
 import { RegisterFirebaseDto } from './dto/register-firebase.dto';

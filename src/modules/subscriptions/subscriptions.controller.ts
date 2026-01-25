@@ -24,7 +24,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { BaseResponseDto } from '../../common/dto/base-response.dto';
 import { UserRole } from '@prisma/client';
-import { User } from '../users/entities/user.entity';
+import { User } from '@prisma/client';
 import { StoreRepository } from '../store/repositories/store.repository';
 
 @Controller('subscriptions')
