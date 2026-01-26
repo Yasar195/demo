@@ -57,6 +57,7 @@ model Voucher {
 model VoucherRequest {
   id      String @id @default(uuid())
   storeId String @map("store_id")
+  locationId String @map("location_id")
 
   // Voucher information
   voucherName        String          @map("voucher_name")
@@ -88,6 +89,7 @@ model VoucherRequest {
 
   // Relations
   store           Store     @relation("StoreVoucherRequests", fields: [storeId], references: [id])
+  location        StoreLocation @relation("LocationVoucherRequests", fields: [locationId], references: [id])
   reviewedBy      User?     @relation("AdminVoucherReviews", fields: [reviewedById], references: [id])
   approvedVoucher Voucher?  @relation("ApprovedVoucher")
   payments        Payment[]

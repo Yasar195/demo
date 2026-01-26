@@ -115,6 +115,7 @@ model StoreLocation {
   reviews          Review[]          @relation("LocationReviews")
   vouchers         Voucher[]         @relation("LocationVouchers")
   request          LocationRequest?  @relation("ApprovedLocation", fields: [requestId], references: [id])
+  voucherRequests  VoucherRequest[]  @relation("LocationVoucherRequests")
   locationRequests LocationRequest[]
 
   @@index([latitude, longitude], name: "geo_location_idx")

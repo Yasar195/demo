@@ -269,7 +269,7 @@ export class VouchersService extends BaseService<Voucher> {
             const voucher = await this.vouchersRepository.findByCode(code);
 
             if (voucher) {
-                await this.redisService.set(cacheKey, JSON.stringify(voucher), 3600); // Cache for 1 hour
+                await this.redisService.set(cacheKey, JSON.stringify(voucher), 120); // Cache for 1 hour
             }
 
             return voucher;
@@ -360,7 +360,7 @@ export class VouchersService extends BaseService<Voucher> {
 
             const result = await this.voucherRequestRepository.findWithPagination(page, limit, { storeId: store.id, status: pagination.status }, orderBy);
 
-            await this.redisService.set(cacheKey, JSON.stringify(result), 3600); // Cache for 1 hour
+            await this.redisService.set(cacheKey, JSON.stringify(result), 120); // Cache for 1 hour
 
             return result;
         } catch (error) {
@@ -401,7 +401,7 @@ export class VouchersService extends BaseService<Voucher> {
                 }
             }
 
-            await this.redisService.set(cacheKey, JSON.stringify(request), 3600); // Cache for 1 hour
+            await this.redisService.set(cacheKey, JSON.stringify(request), 120); // Cache for 1 hour
 
             return request;
         } catch (error) {
@@ -573,7 +573,7 @@ export class VouchersService extends BaseService<Voucher> {
 
             // Create the voucher
             const voucher = await this.vouchersRepository.create({
-                locationId: request.storeId, // TODO: VoucherRequest needs locationId field
+                locationId: request.locationId, // TODO: VoucherRequest needs locationId field
                 requestId: id,
                 code: request.voucherCode,
                 name: request.voucherName,

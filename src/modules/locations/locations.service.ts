@@ -4,6 +4,7 @@ import { QueryLocationsDto } from './dto';
 import { StoreLocation } from '@prisma/client';
 import { RedisService } from '../../integrations/redis/redis.service';
 import { ReviewsService } from '../reviews/reviews.service';
+import { StoreRepository } from '../store/repositories';
 
 @Injectable()
 export class LocationsService {
@@ -11,6 +12,7 @@ export class LocationsService {
         private readonly locationsRepository: LocationsRepository,
         private readonly redisService: RedisService,
         private readonly reviewsService: ReviewsService,
+        private readonly storeRepository: StoreRepository,
     ) { }
 
     /**
@@ -85,6 +87,21 @@ export class LocationsService {
         await this.redisService.set(cacheKey, JSON.stringify(result), 300);
 
         return result;
+    }
+
+    /**
+     * Get current user's store locations (vendor-only)
+     */
+    async getMyLocations(userId: string, query: QueryLocationsDto) {
+        const store = await this.storeRepository.findOneByCondition({ ownerId: userId });
+        if (!store) {
+            throw new NotFoundException('You do not have a store yet');
+        }
+
+        return this.getAllLocations({
+            ...query,
+            storeId: store.id,
+        });
     }
 
     /**

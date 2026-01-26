@@ -1,6 +1,10 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { LocationsService } from './locations.service';
 import { QueryLocationsDto } from './dto';
+import { JwtAuthGuard } from '../../iam/auth/guards/jwt-auth.guard';
+import { SubscriptionGuard } from '../../common/guards/subscription.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { User } from '@prisma/client';
 
 @Controller('locations')
 export class LocationsController {
@@ -9,6 +13,12 @@ export class LocationsController {
     @Get()
     getAllLocations(@Query() query: QueryLocationsDto) {
         return this.locationsService.getAllLocations(query);
+    }
+
+    @Get('my')
+    @UseGuards(JwtAuthGuard, SubscriptionGuard)
+    getMyLocations(@CurrentUser() user: User, @Query() query: QueryLocationsDto) {
+        return this.locationsService.getMyLocations(user.id, query);
     }
 
     @Get(':id')

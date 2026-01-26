@@ -11,6 +11,9 @@ export class CreateVoucherRequestDto {
     @IsOptional()
     voucherDescription?: string;
 
+    @IsString()
+    locationId: string;
+
     @Type(() => Number)
     @IsNumber()
     @Min(0)
