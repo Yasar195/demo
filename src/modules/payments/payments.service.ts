@@ -73,8 +73,7 @@ export class PaymentsService {
                     );
                 }  
 
-                const voucher = await this.paymentsRepository.findById(dto.targetId);
-
+                const voucher = await this.vouchersRepository.findById(dto.targetId);
                 if (!voucher) {
                     throw new Error('Voucher not found');
                 }
