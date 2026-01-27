@@ -5,11 +5,12 @@ import { OrdersRepository } from './repositories';
 import { S3Module } from '../../integrations/s3/s3.module';
 import { SseModule } from '../sse/sse.module';
 import { GiftCardsModule } from '../gift-cards/gift-cards.module';
+import { PaymentsRepository } from '../payments/repositories/payments.repository';
 
 @Module({
     imports: [S3Module, SseModule, GiftCardsModule],
     controllers: [OrdersController],
-    providers: [OrdersService, OrdersRepository],
+    providers: [OrdersService, OrdersRepository, PaymentsRepository],
     exports: [OrdersService],
 })
 export class OrdersModule { }

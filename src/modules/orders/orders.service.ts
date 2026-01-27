@@ -9,6 +9,7 @@ import { S3Service } from '../../integrations/s3/s3.service';
 import { SseService } from '../sse/sse.service';
 import { GiftCardsService } from '../gift-cards/gift-cards.service';
 import * as QRCode from 'qrcode';
+import { PaymentsRepository } from '../payments/repositories/payments.repository';
 
 @Injectable()
 export class OrdersService {
@@ -20,6 +21,7 @@ export class OrdersService {
         private readonly s3Service: S3Service,
         private readonly sseService: SseService,
         private readonly redisService: RedisService,
+        private readonly paymentsRepository: PaymentsRepository,
         private readonly giftCardsService: GiftCardsService,
     ) { }
 
@@ -128,9 +130,7 @@ export class OrdersService {
      */
     async createOrder(userId: string, dto: CreateOrderDto): Promise<UserPurchasedVoucherWithRelations> {
         // 1. Verify payment
-        const payment = await this.prisma.payment.findFirst({
-            where: { id: dto.paymentId, userId },
-        });
+        const payment = await this.paymentsRepository.findOneByCondition({ id: dto.paymentId, userId });
 
         if (!payment) {
             throw new NotFoundException('Payment not found');

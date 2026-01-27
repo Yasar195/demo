@@ -109,7 +109,7 @@ export class PaymentsService {
                     const reservationExpiresAt = new Date();
                     reservationExpiresAt.setMinutes(reservationExpiresAt.getMinutes() + RESERVATION_TIMEOUT_MINUTES);
 
-                    await this.paymentsRepository.create({
+                    const payment = await this.paymentsRepository.create({
                         userId,
                         amount: dto.amount,
                         currency: dto.currency,
@@ -123,6 +123,8 @@ export class PaymentsService {
                         quantityReserved: quantity,
                         reservationExpiresAt,
                     } as any);
+
+                    (paymentIntent as any).paymentId = payment.id;
 
                     return paymentIntent;
                 } catch (error) {
@@ -139,7 +141,7 @@ export class PaymentsService {
                     metadata: { ...dto.metadata, purpose: dto.purpose, targetId: dto.targetId },
                 });
 
-                await this.paymentsRepository.create({
+                const payment = await this.paymentsRepository.create({
                     userId,
                     amount: dto.amount,
                     currency: dto.currency,
@@ -150,6 +152,8 @@ export class PaymentsService {
                     // paymentMethod: dto.paymentMethod as any,
                     metadata: dto.metadata as any,
                 } as any);
+
+                (paymentIntent as any).paymentId = payment.id;
 
                 return paymentIntent;
             }
