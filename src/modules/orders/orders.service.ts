@@ -71,7 +71,6 @@ export class OrdersService {
                             id: true,
                             amount: true,
                             status: true,
-                            paymentMethod: true,
                             completedAt: true,
                             transactionId: true,
                         }
