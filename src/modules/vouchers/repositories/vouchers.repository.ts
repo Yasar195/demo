@@ -147,29 +147,22 @@ export class VouchersRepository extends PrismaRepository<Voucher> {
      * Returns true if reservation successful, false if insufficient stock
      */
     async reserveStock(voucherId: string, quantity: number): Promise<boolean> {
-        const result = await this.model.updateMany({
-            where: {
-                id: voucherId,
-                isActive: true,
-                deletedAt: null,
-                // Check that we have enough unreserved stock
-                // Available stock = quantityAvailable - reservedQuantity
-                quantityAvailable: {
-                    gte: {
-                        reservedQuantity: {
-                            plus: quantity
-                        }
-                    } as any
-                }
-            },
-            data: {
-                reservedQuantity: {
-                    increment: quantity
-                }
-            }
-        });
+        if (quantity <= 0) {
+            return false;
+        }
 
-        return result.count > 0;
+        // Prisma doesn't support column-to-column math in update filters,
+        // so use a raw UPDATE to keep the reservation atomic.
+        const result = await this.prisma.$executeRaw`
+            UPDATE vouchers
+            SET reserved_quantity = COALESCE(reserved_quantity, 0) + ${quantity}
+            WHERE id = ${voucherId}
+              AND is_active = true
+              AND deleted_at IS NULL
+              AND (quantity_available - COALESCE(reserved_quantity, 0)) >= ${quantity}
+        `;
+
+        return Number(result) > 0;
     }
 
     /**
