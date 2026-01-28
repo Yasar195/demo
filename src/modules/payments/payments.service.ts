@@ -5,6 +5,8 @@ import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { PaymentsRepository } from './repositories/payments.repository';
 import { VouchersRepository } from '../vouchers/repositories/vouchers.repository';
 import { RedisService } from '../../integrations/redis/redis.service';
+import { PrismaService } from '../../database/prisma.service';
+import { BillingPeriod, PaymentPurpose } from '@prisma/client';
 
 @Injectable()
 export class PaymentsService {
@@ -14,6 +16,7 @@ export class PaymentsService {
         @Inject(PAYMENT_ADAPTER) private readonly paymentAdapter: PaymentAdapter,
         private readonly paymentsRepository: PaymentsRepository,
         private readonly vouchersRepository: VouchersRepository,
+        private readonly prisma: PrismaService,
         private readonly redisService: RedisService,
     ) { }
 
@@ -133,6 +136,61 @@ export class PaymentsService {
                     throw error;
                 }
             } else {
+                if (dto.purpose === PaymentPurpose.PLAN) {
+                    if (!dto.targetId) {
+                        throw new HttpException(
+                            {
+                                message: 'Payment intent creation failed',
+                                error: 'Target ID (plan ID) is required for plan purchases',
+                            },
+                            HttpStatus.BAD_REQUEST,
+                        );
+                    }
+
+                    const plan = await this.prisma.subscriptionPlan.findUnique({
+                        where: { id: dto.targetId },
+                    });
+
+                    if (!plan || !plan.isActive) {
+                        throw new HttpException(
+                            {
+                                message: 'Payment intent creation failed',
+                                error: 'Plan not found or inactive',
+                            },
+                            HttpStatus.BAD_REQUEST,
+                        );
+                    }
+
+                    const billingPeriod = this.resolveBillingPeriod(
+                        dto.metadata?.billingPeriod ?? dto.metadata?.billing_period,
+                        plan.billingPeriod,
+                    );
+                    const expectedPrice =
+                        billingPeriod === BillingPeriod.YEARLY ? plan.yearlyPrice ?? plan.price : plan.price;
+                    const expectedMinor = this.toMinorUnits(expectedPrice);
+                    const providedMinor = this.toMinorUnits(dto.amount);
+
+                    if (Number.isNaN(expectedMinor) || Number.isNaN(providedMinor) || expectedMinor !== providedMinor) {
+                        throw new HttpException(
+                            {
+                                message: 'Payment intent creation failed',
+                                error: 'Payment amount does not match plan price',
+                            },
+                            HttpStatus.BAD_REQUEST,
+                        );
+                    }
+
+                    if (dto.currency?.toUpperCase() !== plan.currency?.toUpperCase()) {
+                        throw new HttpException(
+                            {
+                                message: 'Payment intent creation failed',
+                                error: 'Payment currency does not match plan currency',
+                            },
+                            HttpStatus.BAD_REQUEST,
+                        );
+                    }
+                }
+
                 // Non-voucher payments (no reservation needed)
                 const paymentIntent = await this.paymentAdapter.createPaymentIntent({
                     amount: dto.amount,
@@ -243,5 +301,33 @@ export class PaymentsService {
             },
             HttpStatus.INTERNAL_SERVER_ERROR,
         );
+    }
+
+    private resolveBillingPeriod(raw: unknown, fallback: BillingPeriod): BillingPeriod {
+        if (!raw) {
+            return fallback;
+        }
+
+        const normalized = String(raw).toUpperCase();
+        if (normalized in BillingPeriod) {
+            return BillingPeriod[normalized as keyof typeof BillingPeriod];
+        }
+
+        throw new HttpException(
+            {
+                message: 'Payment intent creation failed',
+                error: 'Invalid billing period provided',
+            },
+            HttpStatus.BAD_REQUEST,
+        );
+    }
+
+    private toMinorUnits(value: number | string | { toString(): string } | null | undefined): number {
+        if (value === null || value === undefined) {
+            return 0;
+        }
+
+        const numeric = typeof value === 'number' ? value : Number(value.toString());
+        return Math.round(numeric * 100);
     }
 }

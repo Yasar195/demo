@@ -13,10 +13,11 @@ import {
 } from './repositories';
 import { CreateSubscriptionDto, UpgradeDowngradeDto, CancelSubscriptionDto } from './dto';
 import { SubscriptionPlan, StoreSubscription, SubscriptionHistory } from './entities';
-import { SubscriptionStatus, SubscriptionAction, BillingPeriod, PaymentStatus, User } from '@prisma/client';
+import { SubscriptionStatus, SubscriptionAction, BillingPeriod, PaymentStatus, PaymentPurpose, User } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SseService } from '../sse/sse.service';
 import { RedisService } from 'src/integrations/redis';
+import { PrismaService } from '../../database/prisma.service';
 
 @Injectable()
 export class SubscriptionsService {
@@ -30,6 +31,7 @@ export class SubscriptionsService {
         private readonly notificationService: NotificationsService,
         private readonly sseService: SseService,
         private readonly redisService: RedisService,
+        private readonly prisma: PrismaService,
     ) { }
 
     /**
@@ -122,6 +124,9 @@ export class SubscriptionsService {
         // Validate payment for paid plans
         if (isPaidPlan && !dto.paymentId) {
             throw new BadRequestException('Payment ID is required for paid plans');
+        }
+        if (isPaidPlan && dto.paymentId) {
+            await this.validatePlanPayment(userId, dto.paymentId, price, plan.currency);
         }
 
         // Calculate dates
@@ -263,6 +268,9 @@ export class SubscriptionsService {
             if (existingPayment) {
                 throw new BadRequestException('Payment ID has already been used');
             }
+        }
+        if (isPaidPlan && dto.paymentId) {
+            await this.validatePlanPayment(userId, dto.paymentId, newPrice, newPlan.currency);
         }
 
         // Update subscription
@@ -622,5 +630,55 @@ export class SubscriptionsService {
         }
 
         this.logger.warn(`Subscription ${subscriptionId} suspended`);
+    }
+
+    private async validatePlanPayment(
+        userId: string,
+        paymentId: string,
+        expectedAmount: unknown,
+        expectedCurrency: string,
+    ): Promise<void> {
+        const payment = await this.prisma.payment.findFirst({
+            where: {
+                userId,
+                OR: [{ id: paymentId }, { transactionId: paymentId }],
+            },
+        });
+
+        if (!payment) {
+            throw new BadRequestException('Payment not found');
+        }
+
+        if (payment.purpose !== PaymentPurpose.PLAN) {
+            throw new BadRequestException('Payment purpose is invalid for subscriptions');
+        }
+
+        if (payment.status !== PaymentStatus.COMPLETED) {
+            throw new BadRequestException('Payment is not completed');
+        }
+
+        if (payment.currency?.toUpperCase() !== expectedCurrency?.toUpperCase()) {
+            throw new BadRequestException('Payment currency does not match plan currency');
+        }
+
+        const expectedMinor = this.toMinorUnits(expectedAmount);
+        const actualMinor = this.toMinorUnits(payment.amount);
+
+        if (Number.isNaN(expectedMinor) || Number.isNaN(actualMinor) || expectedMinor !== actualMinor) {
+            throw new BadRequestException('Payment amount does not match plan price');
+        }
+    }
+
+    private toMinorUnits(value: unknown): number {
+        if (value === null || value === undefined) {
+            return 0;
+        }
+
+        if (typeof value !== 'number' && typeof value !== 'string' && typeof (value as any)?.toString !== 'function') {
+            return Number.NaN;
+        }
+
+        const numeric = typeof value === 'number' ? value : Number((value as any).toString());
+        return Math.round(numeric * 100);
     }
 }
