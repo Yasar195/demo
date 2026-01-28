@@ -1,8 +1,7 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { BaseResponseDto } from '../../common/dto/base-response.dto';
-import { PaginationDto } from '../../common/dto/pagination.dto';
-import { CreateOrderDto, RedeemVoucherDto } from './dto';
+import { CreateOrderDto, RedeemVoucherDto, OrdersQueryDto } from './dto';
 import { JwtAuthGuard } from '../../iam/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
@@ -19,9 +18,9 @@ export class OrdersController {
     @Get()
     async getUserOrders(
         @CurrentUser() user: User,
-        @Query() pagination: PaginationDto
+        @Query() query: OrdersQueryDto
     ) {
-        const result = await this.ordersService.getUserOrders(user.id, pagination);
+        const result = await this.ordersService.getUserOrders(user.id, query);
         return BaseResponseDto.success(result, 'Orders retrieved successfully');
     }
 
@@ -68,4 +67,3 @@ export class OrdersController {
         return BaseResponseDto.success(order, 'Voucher redeemed successfully');
     }
 }
-

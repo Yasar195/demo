@@ -1,15 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { RedisService } from '../../integrations/redis/redis.service';
 import { OrdersRepository } from './repositories';
-import { PaginationDto } from '../../common/dto/pagination.dto';
 import { UserPurchasedVoucherWithRelations } from './entities/order.entity';
-import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateOrderDto, OrdersFilter, OrdersQueryDto } from './dto';
 import { PrismaService } from '../../database/prisma.service';
 import { S3Service } from '../../integrations/s3/s3.service';
 import { SseService } from '../sse/sse.service';
 import { GiftCardsService } from '../gift-cards/gift-cards.service';
 import * as QRCode from 'qrcode';
 import { PaymentsRepository } from '../payments/repositories/payments.repository';
+import { VoucherRedemptionStatus } from '@prisma/client';
 
 @Injectable()
 export class OrdersService {
@@ -30,7 +30,7 @@ export class OrdersService {
      */
     async getUserOrders(
         userId: string,
-        pagination?: PaginationDto
+        pagination?: OrdersQueryDto
     ): Promise<{ data: UserPurchasedVoucherWithRelations[]; total: number; page: number; totalPages: number }> {
         try {
             const cacheKey = `orders:user:${userId}:${JSON.stringify(pagination || {})}`;
@@ -49,10 +49,23 @@ export class OrdersService {
                 [sortBy]: sortOrder
             };
 
+            const now = new Date();
+            const where: any = { userId };
+
+            if (pagination?.filter === OrdersFilter.ACTIVE) {
+                where.status = { in: [VoucherRedemptionStatus.UNUSED, VoucherRedemptionStatus.PARTIALLY_USED] };
+                where.expiresAt = { gte: now };
+            } else if (pagination?.filter === OrdersFilter.EXPIRED_OR_USED) {
+                where.OR = [
+                    { status: { in: [VoucherRedemptionStatus.USED, VoucherRedemptionStatus.EXPIRED] } },
+                    { expiresAt: { lt: now } },
+                ];
+            }
+
             const result = await this.ordersRepository.findWithPagination(
                 page,
                 limit,
-                { userId },
+                where,
                 orderBy,
                 {
                     voucher: {
