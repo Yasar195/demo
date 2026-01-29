@@ -344,6 +344,20 @@ export class OrdersService {
             userId,
             voucherId: order.voucherId,
             quantity: order.quantity,
+            quantityUsed: order.quantityUsed,
+            voucherName: order.voucher?.name ?? null,
+            voucherImage: order.voucher?.image ?? null,
+            voucherQuantityTotal: order.voucher?.quantityTotal ?? null,
+            voucherQuantityAvailable: order.voucher?.quantityAvailable ?? null,
+            voucherQuantityReserved: order.voucher?.reservedQuantity ?? null,
+            purchasePrice: order.purchasePrice,
+            purchaseFaceValue: order.purchaseFaceValue,
+            purchaseDiscount: order.purchaseDiscount,
+            voucherFaceValue: order.voucher?.faceValue ?? null,
+            voucherSellingPrice: order.voucher?.sellingPrice ?? null,
+            voucherDiscount: order.voucher?.discount ?? null,
+            paymentAmount: order.payment?.amount ?? null,
+            paymentCurrency: order.payment?.currency ?? null,
         });
 
         const qrBuffer = await QRCode.toBuffer(qrData);
