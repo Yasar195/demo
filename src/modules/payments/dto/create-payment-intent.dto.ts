@@ -21,6 +21,12 @@ export class CreatePaymentIntentDto {
     @IsObject()
     metadata?: Record<string, string>;
 
+    @Type(() => Number)
+    @IsInt()
+    @Min(1)
+    @IsOptional()
+    quantity?: number;
+
     @IsEnum(PaymentPurpose)
     purpose: PaymentPurpose;
 

@@ -81,10 +81,12 @@ export class PaymentsService {
                     throw new Error('Voucher not found');
                 }
 
-                // Get quantity from metadata (default to 1 if not provided)
-                const quantity = typeof dto.metadata?.quantity === 'number'
-                    ? dto.metadata.quantity
-                    : parseInt(dto.metadata?.quantity as string, 10) || 1;
+                // Get quantity from body (fallback to metadata, default to 1)
+                const quantity = typeof dto.quantity === 'number'
+                    ? dto.quantity
+                    : (typeof dto.metadata?.quantity === 'number'
+                        ? dto.metadata.quantity
+                        : parseInt(dto.metadata?.quantity as string, 10) || 1);
 
                 // Atomically reserve stock
                 const reserved = await this.vouchersRepository.reserveStock(dto.targetId, quantity);
